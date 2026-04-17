@@ -51,7 +51,7 @@ function mockRegistry(overrides?: Partial<RunnerRegistry>): RunnerRegistry {
   return {
     textPrompt: vi.fn(async (node) => ({ text: node.data.prompt })),
     promptEnhance: vi.fn(async (_node, inputs) => ({
-      text: `enhanced: ${String(inputs['text-in'] ?? '')}`,
+      text: `enhanced: ${String(inputs.textIn ?? '')}`,
     })),
     imageGeneration: vi.fn(async (_node, inputs) => ({
       imageUrl: `https://img.test/${String(inputs.prompt ?? 'unknown')}`,

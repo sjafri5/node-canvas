@@ -43,7 +43,7 @@ export function PromptEnhanceNode({ id }: PromptEnhanceNodeProps) {
           {error}
         </div>
       )}
-      <NodeHandle type="target" position={Position.Left} id="text-in" label="text-in" />
+      <NodeHandle type="target" position={Position.Left} id="textIn" label="textIn" />
       <NodeHandle type="source" position={Position.Right} id="text" label="text" />
     </div>
   );

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
   type Connection,
   type IsValidConnection,
@@ -13,7 +14,7 @@ import type { WorkflowNode, Edge } from '../types';
 
 /** Valid connection rules: sourceHandle → targetHandle type checking. */
 const VALID_CONNECTIONS: [string, string][] = [
-  ['textPrompt.text', 'promptEnhance.text-in'],
+  ['textPrompt.text', 'promptEnhance.textIn'],
   ['textPrompt.text', 'imageGeneration.prompt'],
   ['promptEnhance.text', 'imageGeneration.prompt'],
   ['imageGeneration.image', 'imageDisplay.image'],
@@ -157,7 +158,7 @@ export function Canvas() {
         deleteKeyCode={['Backspace', 'Delete']}
         fitView
       >
-        <Background variant={"dots" as never} color="#2e2e33" gap={24} size={1.5} />
+        <Background variant={BackgroundVariant.Dots} color="#2e2e33" gap={24} size={1.5} />
         <Controls />
       </ReactFlow>
       {importError && (

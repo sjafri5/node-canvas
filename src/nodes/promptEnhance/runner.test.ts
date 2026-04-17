@@ -26,7 +26,7 @@ describe('promptEnhanceRunner', () => {
 
     const result = await promptEnhanceRunner(
       makeNode(),
-      { 'text-in': 'a cat in space' },
+      { textIn: 'a cat in space' },
       makeCtx(mockFetch as unknown as typeof fetch),
     );
 
@@ -50,13 +50,13 @@ describe('promptEnhanceRunner', () => {
     await expect(
       promptEnhanceRunner(
         makeNode(),
-        { 'text-in': 'test' },
+        { textIn: 'test' },
         makeCtx(mockFetch as unknown as typeof fetch),
       ),
     ).rejects.toThrow('Prompt enhancement failed (500): Internal Server Error');
   });
 
-  it('throws when text-in is missing', async () => {
+  it('throws when textIn is missing', async () => {
     const mockFetch = vi.fn();
 
     await expect(

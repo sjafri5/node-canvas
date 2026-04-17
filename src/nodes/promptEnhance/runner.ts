@@ -6,7 +6,7 @@ export const promptEnhanceRunner: NodeRunner<PromptEnhanceNode> = async (
   inputs,
   ctx,
 ) => {
-  const textIn = inputs['text-in'];
+  const textIn = inputs.textIn;
   if (typeof textIn !== 'string' || textIn.trim() === '') {
     throw new Error('No text provided to prompt enhance');
   }
