@@ -10,6 +10,7 @@ const NODE_ENTRIES: { type: NodeType; label: string; color: string }[] = [
 export function Sidebar() {
   const addNode = useAppStore((s) => s.addNode);
   const nodeCount = useAppStore((s) => s.nodes.length);
+  const isRunning = useAppStore((s) => s.isRunning);
 
   function handleAdd(type: NodeType) {
     const offset = nodeCount * 40;
@@ -23,7 +24,10 @@ export function Sidebar() {
         {NODE_ENTRIES.map((entry) => (
           <button
             key={entry.type}
-            className={`rounded-lg border bg-white px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors ${entry.color}`}
+            className={`rounded-lg border bg-white px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors ${entry.color} ${
+              isRunning ? 'cursor-not-allowed opacity-50' : ''
+            }`}
+            disabled={isRunning}
             onClick={() => handleAdd(entry.type)}
           >
             {entry.label}
