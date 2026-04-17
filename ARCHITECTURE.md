@@ -1,81 +1,59 @@
 # Architecture
 
-A short tour of how the system works. This is what I'd walk a teammate through on day one, and the doc I'd re-read before an architecture interview.
-
 ## The core bet
 
-The bet I made early was that the execution engine should be boring: a pure function over a graph. No React in it, no `fetch` in it, no Zustand in it. It takes a workflow, walks the DAG, calls a per-type async function for each node, and returns a map of outputs. Everything reactive sits outside of it.
+The execution engine is a pure function over a graph. `src/engine/runWorkflow.ts` takes a `Workflow`, a `RunnerRegistry`, and an `OnStatusChange` callback. It returns `Promise<Map<string, unknown>>`. No React in it, no DOM, no direct `fetch` calls — the `RunContext` injects a `fetchFn` and an `AbortSignal`, so tests substitute a stub and production binds `globalThis.fetch`.
 
-Why: the engine is the only thing in this repo with real logic. If I'd let it touch React state or network calls directly, it would be impossible to test without a browser and hard to reason about without running it. Keeping it pure means I can unit-test the whole orchestrator in milliseconds with mocked runners, and I can swap the transport layer later — server-side execution, a queue, whatever — without touching the orchestration logic.
-
-The tradeoff is that a second layer (the store) has to stitch the engine back to the UI. That's the cost. I think it's worth it.
+I made this choice because the engine is the only part of the codebase with real logic. If it touched React state or called `fetch` directly, I'd need a browser to test it and a running server to iterate on it. Keeping it pure means I can unit-test the entire orchestrator — cycle detection, input propagation, error isolation across branches — in milliseconds with mocked runners. It also means the transport layer is swappable: move the engine into a queue worker, stream status back over WebSocket, and the UI changes are minimal because `OnStatusChange` is already the seam.
 
 ## How one run actually works
 
-Trace what happens when you hit **Run** on this graph:
+What happens when you click **Run** on a Text Prompt → Image Generation → Image Display graph:
 
-```
-[Text Prompt] ──▶ [Image Generation] ──▶ [Image Display]
-```
+1. `useAppStore.runWorkflow()` in `src/store/useAppStore.ts` fires. It sets `isRunning: true`, resets all node statuses to `idle`, snapshots the current `nodes` and `edges` into a `Workflow`, and calls `runWorkflow()` from `src/engine/runWorkflow.ts` with the runner registry from `src/nodes/registry.ts`.
+2. The engine calls `topoSort()` from `src/engine/topoSort.ts` — Kahn's algorithm over the edge list. If there's a cycle, it throws `CycleError` with the offending node IDs before any runner executes. The store catches this and marks those specific nodes as `error: 'Part of a dependency cycle'`.
+3. With a valid topological order (e.g., `['tp1', 'ig1', 'd1']`), the engine loops node-by-node:
+   - **tp1 (textPrompt):** Its type is in the `RunnerRegistry`, so it's executable. No incoming edges, so `inputs` is `{}`. Engine emits `{ nodeId: 'tp1', status: 'running' }` → the store patches that node → React Flow re-renders just that node's `StatusBadge`. The `textPromptRunner` in `src/nodes/textPrompt/runner.ts` runs — it returns `{ text: node.data.prompt }`. Engine stores the output and emits `status: 'success'`.
+   - **ig1 (imageGeneration):** Executable. Engine calls `gatherInputs()`, which walks inbound edges: it finds an edge with `targetHandle: 'prompt'` from `tp1` with `sourceHandle: 'text'`, reads `tp1`'s output `{ text: '...' }`, and maps it to `inputs.prompt`. The `imageGenerationRunner` in `src/nodes/imageGeneration/runner.ts` calls `ctx.fetchFn('/api/generate/image', ...)`, which hits the Vercel serverless function. On success, it returns `{ imageUrl: '...' }`.
+   - **d1 (imageDisplay):** Its type is `imageDisplay`, which is not a key in `RunnerRegistry`. The engine's `isExecutableType()` check returns false, so it skips this node entirely. The `ImageDisplayNode` component reads the upstream image URL via `useNodeConnections` + a Zustand selector that walks the edge to find `ig1`'s output.
+4. Engine returns the output map. The store writes outputs onto the corresponding nodes and sets `isRunning: false`.
 
-1. `useAppStore.runWorkflow()` fires. The store sets `isRunning = true`, snapshots the current `nodes` and `edges`, and calls `runWorkflow(workflow, onStatusChange)` from `src/engine/`.
-2. The engine runs `topoSort(workflow)` first. If there's a cycle, it throws `CycleError` before a single API call goes out. The store catches this, flags the offending nodes, and stops.
-3. With a valid topological order, the engine loops node-by-node. For each node:
-   - Gather upstream outputs by walking incoming edges and reading from an in-memory `Map<nodeId, output>`.
-   - Emit `onStatusChange(nodeId, 'running')`. The store updates the node's `status`, and React Flow re-renders that one node.
-   - Look up the runner for the node's type from the registry and `await` it with the gathered inputs.
-   - On success: write the output to the map, emit `'success'`. On failure: emit `'error'` with the message, and **don't enqueue** downstream nodes that depended on this one. Unrelated branches keep going.
-4. When the loop finishes, the engine returns the full output map. The store sets `isRunning = false`.
-
-The engine never knows what a "Text Prompt" node is. It just knows nodes have types, types have runners, and runners produce outputs. That's the whole contract.
+If `ig1` had failed, the engine would mark it `error`, add it to `failedIds`, and `getDownstreamIds()` would find `d1` as a transitive dependent — but since `d1` is a non-executable sink, it's already skipped. If there were an executable node downstream of the failure, it would be skipped with `'Skipped: upstream node failed'`. Unrelated branches continue.
 
 ## Why a registry instead of a switch
 
-Every time I add a node type I touch three things and one line:
-
-1. A new folder under `src/nodes/<type>/` with a component, a runner, and types
-2. One line added to `src/nodes/registry.ts`
-3. A new variant in the discriminated union in `src/types.ts`
-
-Then TypeScript tells me everywhere else I need to handle it. This is the main architectural decision that would pay off at scale. A `switch` in `runWorkflow` would be shorter today and painful in six months.
+Adding a node type touches three places: a new folder under `src/nodes/<type>/` with a component and runner, one new variant in the `WorkflowNode` union in `src/types.ts`, and one line in `src/nodes/registry.ts`. Then the compiler tells you everywhere else the new variant isn't handled — exhaustive `switch` statements, `Extract` constraints, runner type mismatches. A `switch` inside `runWorkflow` would be shorter today and painful in six months.
 
 ## State: the one rule that matters
 
-The Zustand store is the source of truth for nodes and edges. React Flow renders from it. When the user drags a node, React Flow fires `onNodesChange`, and I apply the change back to the store using React Flow's `applyNodeChanges` helper. Same for edges.
+The Zustand store in `src/store/useAppStore.ts` owns `nodes` and `edges`. React Flow renders from it. When the user drags a node, React Flow fires `onNodesChange`, and `Canvas.tsx` applies the change back to the store via `rfApplyNodeChanges`. Same for edges and connections.
 
-I know the alternative: let React Flow own the state and read from it. I didn't do that because the moment I need anything beyond drag-and-drop — persistence, execution, undo, a "clear canvas" button — I need a real store anyway, and having two sources of truth is worse than one store with a thin adapter.
+The alternative — letting React Flow own state and reading from it — breaks the moment you need anything beyond drag-and-drop. Persistence, execution, clear canvas, undo: all of these need a real store. Having two sources of truth is worse than one store with a thin adapter. Components subscribe to the smallest slice they need (`useAppStore((s) => s.nodes)`, not the whole store), so dragging one node doesn't re-render the sidebar.
 
-Selectors are tight on purpose. Components subscribe to the smallest slice they need, so dragging a single node only re-renders that node and the edges connected to it, not the whole canvas. There's no React Context for app state — Zustand selectors make it unnecessary.
+## The executable/display distinction
 
-## Persistence
+`ExecutableNode = TextPromptNode | ImageGenerationNode` in `src/types.ts`. `ImageDisplayNode` is excluded — it has no `output` field and no runner. `RunnerRegistry` maps `ExecutableNodeType` to runners, so `'imageDisplay'` is not a valid key at the type level. You literally cannot write `registry.imageDisplay = someRunner` without a compile error.
 
-The store subscribes to its own `nodes` and `edges` slices and writes `{ version: 1, nodes, edges }` to localStorage on change, debounced at ~300ms. On mount, it reads the same key and validates the version before hydrating. If the schema is older or the blob is corrupt, it falls back to an empty canvas rather than crashing — graceful degradation is the whole point of the version field.
+The alternative was adding a phantom `output?: { imageUrl: string }` to `ImageDisplayNode` to satisfy the generic constraint on `NodeRunner<N>`. That would compile, but it distorts the domain model — it implies display nodes produce something, invites code that reads `displayNode.output.imageUrl`, and hides the architectural intent. The current approach makes the engine's skip-non-executable logic self-documenting.
 
-The version is there because schema migration is the first thing that breaks when you ship something like this for real. I didn't want future-me to discover it mid-migration.
+## Persistence and version field
+
+`src/store/persistence.ts` subscribes to the store and writes `{ version: 1, nodes, edges }` to localStorage, debounced at 300ms. On init, `loadFromStorage()` validates the version and shape before hydrating. Wrong version, corrupt JSON, missing key, `localStorage` throwing — all fall back to an empty canvas. The version field exists because schema migration is the first thing that breaks when you iterate on a product like this. I didn't want to discover that mid-migration.
 
 ## API keys and the proxy
 
-Model calls go through `/api/generate/text` and `/api/generate/image`, two Vercel serverless functions. The client never sees the fal.ai or OpenAI keys. This sounds obvious, but it's the single most common mistake I see in side projects shipped this way.
+`api/generate/image.ts` is the only file that reads `FAL_KEY` from the environment. Client-side code calls `/api/generate/image` through `ctx.fetchFn`. The key never ships to the browser. The runner in `src/nodes/imageGeneration/runner.ts` has no idea it's talking to fal.ai — it just calls a URL and parses the response.
 
 ## Where I'd go next
 
-A few things I scoped out deliberately, with a sketch of how each would land:
-
-**Branching / comparative runs.** The DAG already supports fan-out — one Text Prompt feeding three Image Generation nodes works today. What's missing is a UI affordance to wire it up quickly and a view to compare outputs side-by-side. Small feature, big product value.
-
-**Undo/redo.** A command stack over the store. Every mutation becomes a command with `apply` and `invert`. Zustand makes this cheap because the store is already a single source of truth.
-
-**Server-side execution.** Move the engine (already pure) into a queue worker, stream status back over WebSocket. The UI changes are minimal because `onStatusChange` is already the seam.
-
-**Techniques.** Saved subgraphs you can drop onto a canvas. Serialize the subgraph to JSON, rewrite ids on import, merge into the current workflow.
+- **Branching / comparative runs.** The DAG already supports fan-out — one Text Prompt feeding three Image Generation nodes works today. What's missing is a UI affordance to wire it quickly and a view to compare outputs side-by-side.
+- **Undo/redo.** A command stack over the Zustand store. Every mutation becomes a command with `apply` and `invert`. The store is already the single owner, so this is additive.
+- **Server-side execution.** Move the engine (already pure, no DOM) into a queue worker. Stream status back over WebSocket. The `OnStatusChange` callback is the seam — the UI just gets events from a different source.
+- **Techniques.** Saved subgraphs as reusable templates. Serialize to JSON, rewrite IDs on import, merge into the current workflow.
 
 ## Known rough edges
 
-Being honest about what isn't perfect:
-
-- The Image Display node is dumb — it assumes one upstream image edge and picks the first. Fine for the demo, would want a clearer contract at scale.
-- No cancellation of in-flight runs. Hitting **Run** twice quickly will race. I'd thread an `AbortController` through `RunContext`.
-- Provider errors are surfaced as-is. A real product would normalize these.
-- No rate limiting on the proxy. I'd add a token bucket per IP.
-
-None of these are hard — they're just out of scope for a take-home. I'd rather flag them here than have them come up as gotchas in the interview.
+- **No run cancellation wired to UI.** `AbortSignal` is plumbed through `RunContext` and the image runner forwards it to `fetch`, but there's no Cancel button. Adding one is a matter of storing the `AbortController` in the store and calling `.abort()`.
+- **ImageDisplay picks the first upstream connection.** `useNodeConnections` returns all connections on the `image` handle, but the component reads `connections[0]?.source`. Fine for the current one-to-one wiring, but would need a clearer contract if multiple sources were allowed.
+- **No rate limiting on the proxy.** The serverless function at `api/generate/image.ts` forwards every request to fal.ai. A token bucket per IP would be the first thing to add before any public deployment.
+- **Provider errors surface raw.** The image runner wraps the HTTP status and response text into the error message. A real product would normalize these into user-facing messages.
