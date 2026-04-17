@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 
 const NODE_ENTRIES: { type: NodeType; label: string; color: string }[] = [
   { type: 'textPrompt', label: 'Text Prompt', color: 'border-purple-300 hover:bg-purple-50' },
+  { type: 'promptEnhance', label: 'Prompt Enhance', color: 'border-amber-300 hover:bg-amber-50' },
   { type: 'imageGeneration', label: 'Image Generation', color: 'border-blue-300 hover:bg-blue-50' },
   { type: 'imageDisplay', label: 'Image Display', color: 'border-green-300 hover:bg-green-50' },
 ];
