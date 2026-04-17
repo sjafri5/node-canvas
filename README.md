@@ -10,7 +10,7 @@ A node-based visual canvas for chaining AI image generations. Built in a day as 
 
 ```bash
 pnpm install
-cp .env.example .env.local   # add your FAL_KEY
+cp .env.example .env.local   # add FAL_KEY and OPENAI_API_KEY
 pnpm dev:full                # vercel dev — frontend + API proxy on :5173
 ```
 
@@ -35,7 +35,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full walkthrough and [SPEC.md](
 | Canvas | @xyflow/react | De facto for node-based UIs; saves weeks of drag/connect/zoom work |
 | State | Zustand | Idiomatic with React Flow; simpler than Redux for a single-store app |
 | Styling | Tailwind CSS | Fast iteration, no CSS file sprawl |
-| AI | fal.ai (flux/schnell) | Cheap, fast, simple REST |
+| AI — image | fal.ai (flux/schnell) | Cheap, fast, simple REST |
+| AI — text | OpenAI (gpt-4o-mini) | Prompt enhancement via chat completions |
 | Tests | Vitest + Testing Library | Vite-native, fast feedback loop |
 | Deploy | Vercel | Zero-config for Vite + serverless functions as API proxy |
 
@@ -53,7 +54,7 @@ These are deliberate scope cuts, not oversights.
 
 ## Testing
 
-26 tests across 5 files. Coverage focuses on where logic lives: the execution engine (topological sort, workflow runner, error isolation, input propagation), persistence (round-trip, version migration, corrupt-data fallback), and node runners (mocked fetch, error paths). React components aren't unit-tested — React Flow owns the interaction layer, and the components are thin wiring on top of it.
+29 tests across 6 files. Coverage focuses on where logic lives: the execution engine (topological sort, workflow runner, error isolation, input propagation), persistence (round-trip, version migration, corrupt-data fallback), and node runners (mocked fetch, error paths). React components aren't unit-tested — React Flow owns the interaction layer, and the components are thin wiring on top of it.
 
 ```bash
 pnpm test         # single run
@@ -77,6 +78,7 @@ src/
     registry.ts          # node type → component + runner mapping
     StatusBadge.tsx      # shared status indicator
     textPrompt/          # component + passthrough runner
+    promptEnhance/       # component + OpenAI runner
     imageGeneration/     # component + fal.ai runner
     imageDisplay/        # component only (sink — no runner)
   store/
@@ -89,4 +91,5 @@ src/
 api/
   generate/
     image.ts             # Vercel serverless — proxies fal.ai, keeps key server-side
+    text.ts              # Vercel serverless — proxies OpenAI for prompt enhancement
 ```

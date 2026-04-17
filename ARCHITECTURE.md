@@ -24,6 +24,8 @@ If `ig1` had failed, the engine would mark it `error`, add it to `failedIds`, an
 
 Adding a node type touches three places: a new folder under `src/nodes/<type>/` with a component and runner, one new variant in the `WorkflowNode` union in `src/types.ts`, and one line in `src/nodes/registry.ts`. Then the compiler tells you everywhere else the new variant isn't handled — exhaustive `switch` statements, `Extract` constraints, runner type mismatches. A `switch` inside `runWorkflow` would be shorter today and painful in six months.
 
+I tested this claim mid-build. The Prompt Enhance node was added after the first three node types were shipping. Total surface area: a new folder under `src/nodes/promptEnhance/` (component + runner + test), one new variant in the `WorkflowNode` union, one new entry each in `RunnerRegistry` and `nodeTypes`, and an `/api/generate/text` proxy. Zero changes to `src/engine/`. The compiler flagged every place that needed updating — the mock registry in tests, the `createDefaultNode` switch, the runtime `EXECUTABLE_TYPES` set. The registry pattern paid for itself the first time it was exercised.
+
 ## State: the one rule that matters
 
 The Zustand store in `src/store/useAppStore.ts` owns `nodes` and `edges`. React Flow renders from it. When the user drags a node, React Flow fires `onNodesChange`, and `Canvas.tsx` applies the change back to the store via `rfApplyNodeChanges`. Same for edges and connections.
@@ -32,7 +34,7 @@ The alternative — letting React Flow own state and reading from it — breaks 
 
 ## The executable/display distinction
 
-`ExecutableNode = TextPromptNode | ImageGenerationNode` in `src/types.ts`. `ImageDisplayNode` is excluded — it has no `output` field and no runner. `RunnerRegistry` maps `ExecutableNodeType` to runners, so `'imageDisplay'` is not a valid key at the type level. You literally cannot write `registry.imageDisplay = someRunner` without a compile error.
+`ExecutableNode = TextPromptNode | PromptEnhanceNode | ImageGenerationNode` in `src/types.ts`. `ImageDisplayNode` is excluded — it has no `output` field and no runner. `RunnerRegistry` maps `ExecutableNodeType` to runners, so `'imageDisplay'` is not a valid key at the type level. You literally cannot write `registry.imageDisplay = someRunner` without a compile error.
 
 The alternative was adding a phantom `output?: { imageUrl: string }` to `ImageDisplayNode` to satisfy the generic constraint on `NodeRunner<N>`. That would compile, but it distorts the domain model — it implies display nodes produce something, invites code that reads `displayNode.output.imageUrl`, and hides the architectural intent. The current approach makes the engine's skip-non-executable logic self-documenting.
 
@@ -42,7 +44,7 @@ The alternative was adding a phantom `output?: { imageUrl: string }` to `ImageDi
 
 ## API keys and the proxy
 
-`api/generate/image.ts` is the only file that reads `FAL_KEY` from the environment. Client-side code calls `/api/generate/image` through `ctx.fetchFn`. The key never ships to the browser. The runner in `src/nodes/imageGeneration/runner.ts` has no idea it's talking to fal.ai — it just calls a URL and parses the response.
+API keys live exclusively in serverless functions. `api/generate/image.ts` reads `FAL_KEY`; `api/generate/text.ts` reads `OPENAI_API_KEY`. Client-side code calls these through `ctx.fetchFn` — the runners in `src/nodes/imageGeneration/runner.ts` and `src/nodes/promptEnhance/runner.ts` have no idea which provider they're talking to. They just call a URL and parse the response.
 
 ## Where I'd go next
 
