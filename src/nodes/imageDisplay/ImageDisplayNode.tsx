@@ -14,11 +14,11 @@ export function ImageDisplayNode({ id }: ImageDisplayNodeProps) {
   const imageUrl = useAppStore((s) => {
     if (!sourceNodeId) return undefined;
     const sourceNode = s.nodes.find((n) => n.id === sourceNodeId);
-    if (sourceNode && 'output' in sourceNode) {
-      const output = sourceNode.output as { imageUrl?: string } | undefined;
-      return output?.imageUrl;
-    }
-    return undefined;
+    if (!sourceNode || !('output' in sourceNode)) return undefined;
+    const output: unknown = sourceNode.output;
+    if (output == null || typeof output !== 'object') return undefined;
+    const url = (output as Record<string, unknown>).imageUrl;
+    return typeof url === 'string' ? url : undefined;
   });
 
   const status = useAppStore((s) => s.nodes.find((n) => n.id === id)?.status ?? 'idle');
