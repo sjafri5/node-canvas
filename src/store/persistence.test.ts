@@ -71,6 +71,20 @@ describe('persistence', () => {
     expect(result).toEqual({ version: 1, nodes: [], edges: [] });
   });
 
+  it('returns empty workflow when nodes contain garbage elements', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        nodes: [{ id: null, type: 'banana', garbage: true }],
+        edges: [],
+      }),
+    );
+    const result = loadFromStorage();
+
+    expect(result).toEqual({ version: 1, nodes: [], edges: [] });
+  });
+
   it('returns empty workflow when localStorage throws', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('storage disabled');

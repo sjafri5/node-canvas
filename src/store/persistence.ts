@@ -1,7 +1,14 @@
-import type { WorkflowNode, Edge, Workflow } from '../types';
+import type { WorkflowNode, Edge, Workflow, NodeType } from '../types';
 
 const STORAGE_KEY = 'node-canvas-workflow';
 const CURRENT_VERSION = 1;
+
+const VALID_NODE_TYPES: ReadonlySet<string> = new Set<string>([
+  'textPrompt',
+  'promptEnhance',
+  'imageGeneration',
+  'imageDisplay',
+]);
 
 interface PersistedWorkflow {
   version: number;
@@ -9,14 +16,37 @@ interface PersistedWorkflow {
   edges: Edge[];
 }
 
+function isValidNodeType(type: unknown): type is NodeType {
+  return typeof type === 'string' && VALID_NODE_TYPES.has(type);
+}
+
+function isValidNode(node: unknown): boolean {
+  if (node == null || typeof node !== 'object') return false;
+  const n = node as Record<string, unknown>;
+  return (
+    typeof n.id === 'string' &&
+    n.id.length > 0 &&
+    isValidNodeType(n.type) &&
+    n.position != null &&
+    typeof n.position === 'object' &&
+    typeof (n.position as Record<string, unknown>).x === 'number' &&
+    typeof (n.position as Record<string, unknown>).y === 'number' &&
+    n.data != null &&
+    typeof n.data === 'object'
+  );
+}
+
 export function isValidWorkflow(data: unknown): data is PersistedWorkflow {
   if (data == null || typeof data !== 'object') return false;
   const obj = data as Record<string, unknown>;
-  return (
-    obj.version === CURRENT_VERSION &&
-    Array.isArray(obj.nodes) &&
-    Array.isArray(obj.edges)
-  );
+  if (obj.version !== CURRENT_VERSION) return false;
+  if (!Array.isArray(obj.nodes) || !Array.isArray(obj.edges)) return false;
+
+  for (const node of obj.nodes) {
+    if (!isValidNode(node)) return false;
+  }
+
+  return true;
 }
 
 export function loadFromStorage(): Workflow {
