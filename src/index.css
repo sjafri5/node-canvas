@@ -1,10 +1,92 @@
 @import 'tailwindcss';
 @import '@xyflow/react/dist/style.css';
 
+:root {
+  --bg-canvas: #0a0a0b;
+  --bg-surface: #141416;
+  --bg-surface-hover: #1c1c1f;
+  --border-subtle: #26262a;
+  --border-strong: #3f3f46;
+  --text-primary: #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --accent: #8b5cf6;
+  --accent-hover: #7c3aed;
+  --status-success: #10b981;
+  --status-error: #ef4444;
+  --status-running: #f59e0b;
+  --status-idle: #52525b;
+}
+
 html,
 body,
 #root {
   height: 100%;
   margin: 0;
   padding: 0;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+}
+
+/* React Flow overrides for dark theme */
+.react-flow__controls button {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-secondary) !important;
+  fill: var(--text-secondary) !important;
+}
+.react-flow__controls button:hover {
+  background: var(--bg-surface-hover) !important;
+}
+.react-flow__controls button svg {
+  fill: var(--text-secondary) !important;
+}
+.react-flow__attribution {
+  display: none;
+}
+
+/* Handle base styles */
+.react-flow .react-flow__handle {
+  width: 14px !important;
+  height: 14px !important;
+  background: var(--bg-surface) !important;
+  border: 2px solid var(--border-strong) !important;
+  border-radius: 9999px !important;
+  transition: border-color 150ms, transform 150ms;
+}
+.react-flow .react-flow__handle:hover {
+  border-color: var(--accent) !important;
+  transform: scale(1.15);
+}
+.react-flow .react-flow__handle-left {
+  left: -7px !important;
+}
+.react-flow .react-flow__handle-right {
+  right: -7px !important;
+}
+
+/* Pulse valid targets while connecting */
+.react-flow__handle.connectingto {
+  border-color: var(--accent) !important;
+  animation: handle-pulse 1s ease-in-out infinite;
+}
+@keyframes handle-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(139, 92, 246, 0); }
+}
+
+/* Edge styles */
+.react-flow__edge-path {
+  stroke: var(--border-strong) !important;
+  stroke-width: 2 !important;
+}
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--accent) !important;
+  cursor: pointer;
+}
+
+/* Connection line while dragging */
+.react-flow__connection-path {
+  stroke: var(--accent) !important;
+  stroke-width: 2 !important;
 }
