@@ -22,7 +22,7 @@ export function ImageDisplayNode({ id }: ImageDisplayNodeProps) {
   const status = useAppStore((s) => s.nodes.find((n) => n.id === id)?.status ?? 'idle');
 
   return (
-    <div className="relative min-w-[240px] rounded-lg border border-green-300 bg-white p-3 shadow-sm">
+    <div className="relative min-w-[400px] rounded-lg border border-green-300 bg-white p-3 shadow-sm">
       <div className="mb-2 text-xs font-semibold text-green-600">Image Display</div>
       {imageUrl ? (
         <img

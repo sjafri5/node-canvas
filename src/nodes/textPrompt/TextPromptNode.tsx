@@ -11,7 +11,7 @@ export function TextPromptNode({ id, data }: TextPromptNodeProps) {
   const updateNodeData = useAppStore((s) => s.updateNodeData);
 
   return (
-    <div className="relative min-w-[200px] rounded-lg border border-purple-300 bg-white p-3 shadow-sm">
+    <div className="relative min-w-[280px] rounded-lg border border-purple-300 bg-white p-3 shadow-sm">
       <StatusBadge status={status} />
       <div className="mb-2 text-xs font-semibold text-purple-600">Text Prompt</div>
       <textarea

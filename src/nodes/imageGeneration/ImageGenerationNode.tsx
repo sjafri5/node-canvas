@@ -13,7 +13,7 @@ export function ImageGenerationNode({ id }: ImageGenNodeProps) {
   const error = node?.error;
 
   return (
-    <div className="relative min-w-[200px] rounded-lg border border-blue-300 bg-white p-3 shadow-sm">
+    <div className="relative min-w-[280px] rounded-lg border border-blue-300 bg-white p-3 shadow-sm">
       <StatusBadge status={status} />
       <div className="mb-2 text-xs font-semibold text-blue-600">Image Generation</div>
       <div className="text-xs text-gray-400">flux/schnell</div>
