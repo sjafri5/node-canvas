@@ -1,4 +1,4 @@
-import { Handle, Position, useHandleConnections } from '@xyflow/react';
+import { Handle, Position, useNodeConnections } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { ImageDisplayNode as ImageDisplayNodeType } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
@@ -6,7 +6,7 @@ import { useAppStore } from '../../store/useAppStore';
 type ImageDisplayNodeProps = NodeProps & { data: ImageDisplayNodeType['data'] };
 
 export function ImageDisplayNode({ id }: ImageDisplayNodeProps) {
-  const connections = useHandleConnections({ type: 'target', id: 'image' });
+  const connections = useNodeConnections({ handleType: 'target', handleId: 'image' });
   const sourceNodeId = connections[0]?.source;
 
   const imageUrl = useAppStore((s) => {
