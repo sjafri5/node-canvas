@@ -25,7 +25,7 @@ export function ImageDisplayNode({ id }: ImageDisplayNodeProps) {
 
   return (
     <div
-      className="group relative min-w-[400px] rounded-lg border p-3"
+      className="group relative min-w-[480px] rounded-lg border p-3"
       style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
     >
       <DeleteButton nodeId={id} />

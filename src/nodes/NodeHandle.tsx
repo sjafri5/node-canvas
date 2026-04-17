@@ -23,7 +23,8 @@ export function NodeHandle({ type, position, id, label }: NodeHandleProps) {
         className="pointer-events-none absolute whitespace-nowrap font-mono text-[11px]"
         style={{
           color: 'var(--text-secondary)',
-          [isLeft ? 'left' : 'right']: '14px',
+          // Labels sit outside the node: input labels to the left, output labels to the right
+          [isLeft ? 'right' : 'left']: '12px',
         }}
       >
         {label}
