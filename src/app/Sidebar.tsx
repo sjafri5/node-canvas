@@ -1,11 +1,11 @@
 import type { NodeType } from '../types';
 import { useAppStore } from '../store/useAppStore';
 
-const NODE_ENTRIES: { type: NodeType; label: string; color: string }[] = [
-  { type: 'textPrompt', label: 'Text Prompt', color: 'border-purple-300 hover:bg-purple-50' },
-  { type: 'promptEnhance', label: 'Prompt Enhance', color: 'border-amber-300 hover:bg-amber-50' },
-  { type: 'imageGeneration', label: 'Image Generation', color: 'border-blue-300 hover:bg-blue-50' },
-  { type: 'imageDisplay', label: 'Image Display', color: 'border-green-300 hover:bg-green-50' },
+const NODE_ENTRIES: { type: NodeType; label: string }[] = [
+  { type: 'textPrompt', label: 'Text Prompt' },
+  { type: 'promptEnhance', label: 'Prompt Enhance' },
+  { type: 'imageGeneration', label: 'Image Generation' },
+  { type: 'imageDisplay', label: 'Image Display' },
 ];
 
 export function Sidebar() {
@@ -19,22 +19,43 @@ export function Sidebar() {
   }
 
   return (
-    <div className="w-60 border-r border-gray-200 bg-gray-50 p-4">
-      <h2 className="mb-4 text-sm font-semibold uppercase text-gray-500">Nodes</h2>
-      <div className="flex flex-col gap-2">
-        {NODE_ENTRIES.map((entry) => (
-          <button
-            key={entry.type}
-            className={`rounded-lg border bg-white px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors ${entry.color} ${
-              isRunning ? 'cursor-not-allowed opacity-50' : ''
-            }`}
-            disabled={isRunning}
-            onClick={() => handleAdd(entry.type)}
-          >
-            {entry.label}
-          </button>
-        ))}
-      </div>
+    <div
+      className="flex w-56 flex-col gap-2 border-r p-4"
+      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+    >
+      <h2
+        className="mb-2 text-[11px] font-semibold uppercase tracking-wider"
+        style={{ color: 'var(--text-tertiary)' }}
+      >
+        Nodes
+      </h2>
+      {NODE_ENTRIES.map((entry) => (
+        <button
+          key={entry.type}
+          className={`rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors ${
+            isRunning ? 'cursor-not-allowed opacity-40' : ''
+          }`}
+          style={{
+            background: 'var(--bg-surface)',
+            borderColor: 'var(--border-subtle)',
+            color: 'var(--text-secondary)',
+          }}
+          onMouseEnter={(e) => {
+            if (!isRunning) {
+              e.currentTarget.style.background = 'var(--bg-surface-hover)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--bg-surface)';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+          }}
+          disabled={isRunning}
+          onClick={() => handleAdd(entry.type)}
+        >
+          {entry.label}
+        </button>
+      ))}
     </div>
   );
 }

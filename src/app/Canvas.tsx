@@ -20,21 +20,30 @@ const VALID_CONNECTIONS: [string, string][] = [
 ];
 
 export function Canvas() {
-  // Stable reference prevents React Flow from remounting custom node components
   const nodeTypes = useMemo(() => registeredNodeTypes, []);
 
   const nodes = useAppStore((s) => s.nodes);
   const edges = useAppStore((s) => s.edges);
+  const isRunning = useAppStore((s) => s.isRunning);
   const applyNodeChanges = useAppStore((s) => s.applyNodeChanges);
   const applyEdgeChanges = useAppStore((s) => s.applyEdgeChanges);
   const connect = useAppStore((s) => s.connect);
   const runWorkflow = useAppStore((s) => s.runWorkflow);
   const clearCanvas = useAppStore((s) => s.clearCanvas);
-  const isRunning = useAppStore((s) => s.isRunning);
+  const deleteNode = useAppStore((s) => s.deleteNode);
 
   const onNodesChange = useCallback(
-    (changes: NodeChange<WorkflowNode>[]) => applyNodeChanges(changes),
-    [applyNodeChanges],
+    (changes: NodeChange<WorkflowNode>[]) => {
+      const removeChanges = changes.filter((c) => c.type === 'remove');
+      for (const change of removeChanges) {
+        deleteNode(change.id);
+      }
+      const otherChanges = changes.filter((c) => c.type !== 'remove');
+      if (otherChanges.length > 0) {
+        applyNodeChanges(otherChanges);
+      }
+    },
+    [applyNodeChanges, deleteNode],
   );
 
   const onEdgesChange = useCallback(
@@ -85,37 +94,58 @@ export function Canvas() {
     }
   }, [clearCanvas]);
 
+  // Animate edges whose source node is running or succeeded
+  const styledEdges = useMemo(() => {
+    return edges.map((edge) => {
+      const sourceNode = nodes.find((n) => n.id === edge.source);
+      const animated =
+        isRunning &&
+        sourceNode != null &&
+        (sourceNode.status === 'running' || sourceNode.status === 'success');
+      return { ...edge, animated };
+    });
+  }, [edges, nodes, isRunning]);
+
   return (
-    <div className="relative flex-1">
+    <div className="relative flex-1" style={{ background: 'var(--bg-canvas)' }}>
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={styledEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
+        deleteKeyCode={['Backspace', 'Delete']}
         fitView
       >
-        <Background />
+        <Background variant={"dots" as never} color="#1f1f22" gap={24} size={1} />
         <Controls />
       </ReactFlow>
       <div className="absolute top-4 right-4 flex gap-2">
         <button
-          className={`rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors ${
-            isRunning ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-50'
+          className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            isRunning ? 'cursor-not-allowed opacity-40' : 'hover:opacity-80'
           }`}
+          style={{ color: 'var(--text-secondary)', background: 'transparent' }}
           disabled={isRunning}
           onClick={handleClear}
         >
           Clear
         </button>
         <button
-          className={`rounded-lg px-4 py-2 text-sm font-semibold text-white shadow transition-colors ${
-            isRunning
-              ? 'cursor-not-allowed bg-gray-400'
-              : 'bg-indigo-600 hover:bg-indigo-700'
+          className={`rounded-md px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors ${
+            isRunning ? 'cursor-not-allowed opacity-50' : ''
           }`}
+          style={{
+            background: isRunning ? 'var(--status-idle)' : 'var(--accent)',
+          }}
+          onMouseEnter={(e) => {
+            if (!isRunning) e.currentTarget.style.background = 'var(--accent-hover)';
+          }}
+          onMouseLeave={(e) => {
+            if (!isRunning) e.currentTarget.style.background = 'var(--accent)';
+          }}
           disabled={isRunning}
           onClick={handleRun}
         >
