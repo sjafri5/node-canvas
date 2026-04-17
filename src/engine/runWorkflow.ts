@@ -1,6 +1,6 @@
-import type { Workflow, ExecutableNodeType, NodeType } from '../types';
+import type { Workflow, ExecutableNodeType, NodeType, ExecutableNode } from '../types';
 import { executableTypes } from '../types';
-import type { RunnerRegistry, OnStatusChange, RunContext } from './types';
+import type { RunnerRegistry, OnStatusChange, RunContext, NodeRunner } from './types';
 import { topoSort } from './topoSort';
 
 const EXECUTABLE_SET: ReadonlySet<string> = new Set<string>(executableTypes);
@@ -54,6 +54,23 @@ function gatherInputs(
   return inputs;
 }
 
+/**
+ * Type-safe runner dispatch. The registry maps each ExecutableNodeType to its
+ * correctly-typed runner. We look up by the node's type string, which
+ * isExecutableType has already narrowed to ExecutableNodeType. The runner and
+ * node are both keyed by the same literal type K, so the call is safe.
+ */
+function dispatchRunner<K extends ExecutableNodeType>(
+  registry: RunnerRegistry,
+  type: K,
+  node: Extract<ExecutableNode, { type: K }>,
+  inputs: Record<string, unknown>,
+  ctx: RunContext,
+): Promise<unknown> {
+  const runner: NodeRunner<Extract<ExecutableNode, { type: K }>> = registry[type];
+  return runner(node, inputs, ctx);
+}
+
 export async function runWorkflow(
   workflow: Workflow,
   registry: RunnerRegistry,
@@ -91,12 +108,13 @@ export async function runWorkflow(
     onChange({ nodeId, status: 'running' });
 
     try {
-      const runner = registry[node.type];
-      // The registry is typed so runner matches the node type, but at runtime
-      // we pass through the generic ExecutableNode. The cast is safe because
-      // isExecutableType guards the branch and the registry key matches node.type.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (runner as any)(node, inputs, resolvedCtx);
+      const result = await dispatchRunner(
+        registry,
+        node.type,
+        node as Extract<ExecutableNode, { type: typeof node.type }>,
+        inputs,
+        resolvedCtx,
+      );
       outputs.set(nodeId, result);
       onChange({ nodeId, status: 'success' });
     } catch (err) {
