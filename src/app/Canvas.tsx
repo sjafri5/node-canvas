@@ -12,10 +12,12 @@ import { nodeTypes as registeredNodeTypes, runners } from '../nodes/registry';
 import type { WorkflowNode, Edge } from '../types';
 
 /** Valid connection rules: sourceHandle → targetHandle type checking. */
-const VALID_CONNECTIONS: Record<string, string> = {
-  'textPrompt.text': 'imageGeneration.prompt',
-  'imageGeneration.image': 'imageDisplay.image',
-};
+const VALID_CONNECTIONS: [string, string][] = [
+  ['textPrompt.text', 'promptEnhance.text-in'],
+  ['textPrompt.text', 'imageGeneration.prompt'],
+  ['promptEnhance.text', 'imageGeneration.prompt'],
+  ['imageGeneration.image', 'imageDisplay.image'],
+];
 
 export function Canvas() {
   // Stable reference prevents React Flow from remounting custom node components
@@ -68,7 +70,7 @@ export function Canvas() {
       const sourceKey = `${sourceNode.type}.${connection.sourceHandle ?? ''}`;
       const targetKey = `${targetNode.type}.${connection.targetHandle ?? ''}`;
 
-      return VALID_CONNECTIONS[sourceKey] === targetKey;
+      return VALID_CONNECTIONS.some(([s, t]) => s === sourceKey && t === targetKey);
     },
     [nodes],
   );
