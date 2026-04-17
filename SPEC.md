@@ -38,13 +38,12 @@ These are listed in the README under "What I'd build next" — scoping down deli
 | State | Zustand | Idiomatic with React Flow; simpler than Redux, better than prop drilling |
 | Styling | Tailwind CSS | Fast iteration; no CSS file sprawl |
 | AI — image | fal.ai (`flux/schnell`) | Cheap, fast, simple REST |
-| AI — text | OpenAI `gpt-4o-mini` | Familiar, cheap |
 | Tests | Vitest + Testing Library | Fast, Vite-native |
 | Lint/format | ESLint (flat config) + Prettier | Baseline hygiene |
 | Deploy | Vercel | Zero-config for Vite + serverless functions for API proxy |
 
 ### Why a serverless proxy
-Model API keys never ship to the browser. Requests go through `/api/generate/text` and `/api/generate/image` Vercel functions. Keys live in `.env.local` (dev) and Vercel env vars (prod).
+Model API keys never ship to the browser. Requests go through `/api/generate/image` Vercel functions. Keys live in `.env.local` (dev) and Vercel env vars (prod). Only `FAL_KEY` is required — the Text Prompt node is a passthrough (no LLM call).
 
 ## 4. Data model
 
@@ -66,17 +65,20 @@ interface TextPromptNode extends BaseNode {
   type: 'textPrompt';
   data: { prompt: string };
   output?: { text: string };
+  handles: { inputs: []; outputs: ['text'] };
 }
 
 interface ImageGenerationNode extends BaseNode {
   type: 'imageGeneration';
-  data: { model: 'flux-schnell' | 'sdxl'; aspectRatio: '1:1' | '16:9' };
+  data: Record<string, never>;
   output?: { imageUrl: string };
+  handles: { inputs: ['prompt']; outputs: ['image'] };
 }
 
 interface ImageDisplayNode extends BaseNode {
   type: 'imageDisplay';
   data: Record<string, never>;
+  handles: { inputs: ['image']; outputs: [] };
 }
 
 type WorkflowNode = TextPromptNode | ImageGenerationNode | ImageDisplayNode;
@@ -95,6 +97,18 @@ interface Workflow {
   edges: Edge[];
 }
 ```
+
+## 4b. Handle definitions
+
+Each node type declares its input/output handles explicitly. The engine uses `targetHandle` to gather inputs from upstream `sourceHandle` outputs.
+
+| Node Type | Inputs | Outputs |
+|---|---|---|
+| `textPrompt` | *(none)* | `text` |
+| `imageGeneration` | `prompt` | `image` |
+| `imageDisplay` | `image` | *(none)* |
+
+**Note:** Handles are encoded in the type system (see §4) but at runtime are defined by the node components registering React Flow handles. The engine resolves `inputs.prompt` for the image runner by walking edges where `targetHandle === 'prompt'` and reading the source node's output keyed by `sourceHandle`.
 
 ## 5. Execution engine
 
@@ -135,6 +149,7 @@ A registry beats a `switch(type)` in one god-function: new node types become a s
 - Cycle detection throws **before** any node runs
 - A failed node marks itself `error`, sets a message, halts its downstream path, but lets unrelated branches continue
 - Provider API errors surface the real message on the node
+- **AbortController / cancellation:** out of scope for MVP. Noted as a known limitation.
 
 ## 6. State (Zustand)
 
@@ -146,7 +161,11 @@ interface AppStore {
   nodes: WorkflowNode[];
   edges: Edge[];
   addNode: (type: NodeType, position: XY) => void;
-  updateNodeData: (id: string, patch: Partial<WorkflowNode['data']>) => void;
+  updateNodeData: <T extends WorkflowNode['type']>(
+    id: string,
+    type: T,
+    patch: Partial<Extract<WorkflowNode, { type: T }>['data']>
+  ) => void;
   connect: (edge: Omit<Edge, 'id'>) => void;
   deleteNode: (id: string) => void;
 
@@ -172,7 +191,7 @@ src/
     registry.ts                # node type → component + runner
     textPrompt/
       TextPromptNode.tsx
-      runner.ts
+      runner.ts                # passthrough — returns data.prompt as output.text
       types.ts
     imageGeneration/
       ImageGenerationNode.tsx
@@ -197,8 +216,7 @@ src/
   main.tsx
 api/
   generate/
-    text.ts                    # proxies OpenAI
-    image.ts                   # proxies fal.ai
+    image.ts                   # proxies fal.ai (FAL_KEY only)
 ```
 
 **Colocation rule:** anything specific to a node type lives in its folder. Adding a node type = one new folder + one line in `registry.ts`.
@@ -248,5 +266,8 @@ Ship this in the README as "Known limitations / what I'd build next":
 - Export workflow as JSON; import JSON
 - Reusable "Techniques" — save a subgraph as a template
 - Real-time multi-user via Yjs or Liveblocks
+- AbortController for run cancellation
+- Text enhancement via LLM (OpenAI gpt-4o-mini) in Text Prompt node
+- Model selector on Image Generation node (SDXL, etc.)
 
 Signals awareness of the product direction and that scoping was deliberate.

@@ -26,7 +26,7 @@ If a change trades one of these away, stop and ask.
 - Tailwind CSS for styling
 - Vitest + `@testing-library/react` for tests
 - Vercel for deploy (serverless functions for the model API proxy)
-- fal.ai (image) and OpenAI (text) via server-side proxy
+- fal.ai (image) via server-side proxy (`FAL_KEY` only — no OpenAI dependency)
 
 **Do not introduce new dependencies without explicit approval.** No Redux, no MobX, no styled-components, no Jest, no Chakra, no shadcn, no tRPC. If you think one is needed, say so and stop.
 
