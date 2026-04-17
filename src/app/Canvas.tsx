@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -30,7 +30,12 @@ export function Canvas() {
   const connect = useAppStore((s) => s.connect);
   const runWorkflow = useAppStore((s) => s.runWorkflow);
   const clearCanvas = useAppStore((s) => s.clearCanvas);
+  const exportWorkflow = useAppStore((s) => s.exportWorkflow);
+  const importWorkflow = useAppStore((s) => s.importWorkflow);
   const deleteNode = useAppStore((s) => s.deleteNode);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<WorkflowNode>[]) => {
@@ -94,6 +99,39 @@ export function Canvas() {
     }
   }, [clearCanvas]);
 
+  const handleExport = useCallback(() => {
+    const json = exportWorkflow();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `workflow-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [exportWorkflow]);
+
+  const handleImportFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          importWorkflow(reader.result as string);
+          setImportError(null);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to import workflow';
+          setImportError(msg);
+          setTimeout(() => setImportError(null), 4000);
+        }
+      };
+      reader.readAsText(file);
+      // Reset so the same file can be re-imported
+      e.target.value = '';
+    },
+    [importWorkflow],
+  );
+
   // Animate edges whose source node is running or succeeded
   const styledEdges = useMemo(() => {
     return edges.map((edge) => {
@@ -122,7 +160,36 @@ export function Canvas() {
         <Background variant={"dots" as never} color="#1f1f22" gap={24} size={1} />
         <Controls />
       </ReactFlow>
+      {importError && (
+        <div
+          className="absolute top-4 left-1/2 z-50 -translate-x-1/2 rounded-md px-4 py-2 text-sm font-medium"
+          style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--status-error)' }}
+        >
+          {importError}
+        </div>
+      )}
       <div className="absolute top-4 right-4 flex gap-2">
+        <button
+          className="rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:opacity-80"
+          style={{ color: 'var(--text-secondary)', background: 'transparent' }}
+          onClick={handleExport}
+        >
+          Export
+        </button>
+        <button
+          className="rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:opacity-80"
+          style={{ color: 'var(--text-secondary)', background: 'transparent' }}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Import
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={handleImportFile}
+        />
         <button
           className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             isRunning ? 'cursor-not-allowed opacity-40' : 'hover:opacity-80'
