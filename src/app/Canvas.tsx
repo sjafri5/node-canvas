@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -8,7 +8,7 @@ import {
 } from '@xyflow/react';
 import type { NodeChange, EdgeChange } from '@xyflow/react';
 import { useAppStore } from '../store/useAppStore';
-import { nodeTypes, runners } from '../nodes/registry';
+import { nodeTypes as registeredNodeTypes, runners } from '../nodes/registry';
 import type { WorkflowNode, Edge } from '../types';
 
 /** Valid connection rules: sourceHandle → targetHandle type checking. */
@@ -18,6 +18,9 @@ const VALID_CONNECTIONS: Record<string, string> = {
 };
 
 export function Canvas() {
+  // Stable reference prevents React Flow from remounting custom node components
+  const nodeTypes = useMemo(() => registeredNodeTypes, []);
+
   const nodes = useAppStore((s) => s.nodes);
   const edges = useAppStore((s) => s.edges);
   const applyNodeChanges = useAppStore((s) => s.applyNodeChanges);
