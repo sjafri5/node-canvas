@@ -62,7 +62,7 @@ export async function runWorkflow(
   const sorted = topoSort(workflow);
 
   const resolvedCtx: RunContext = {
-    fetchFn: ctx?.fetchFn ?? globalThis.fetch,
+    fetchFn: ctx?.fetchFn ?? globalThis.fetch.bind(globalThis),
     signal: ctx?.signal ?? new AbortController().signal,
   };
 

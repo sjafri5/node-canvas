@@ -14,7 +14,7 @@ function makeNode(prompt: string): TextPromptNode {
 }
 
 const ctx: RunContext = {
-  fetchFn: globalThis.fetch,
+  fetchFn: globalThis.fetch.bind(globalThis),
   signal: new AbortController().signal,
 };
 
