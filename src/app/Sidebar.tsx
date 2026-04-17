@@ -6,6 +6,10 @@ const NODE_ENTRIES: { type: NodeType; label: string }[] = [
   { type: 'promptEnhance', label: 'Prompt Enhance' },
   { type: 'imageGeneration', label: 'Image Generation' },
   { type: 'imageDisplay', label: 'Image Display' },
+  { type: 'referenceImage', label: 'Reference Image' },
+  { type: 'imageToImage', label: 'Image to Image' },
+  { type: 'imageToVideo', label: 'Image to Video' },
+  { type: 'videoDisplay', label: 'Video Display' },
 ];
 
 export function Sidebar() {

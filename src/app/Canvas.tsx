@@ -10,15 +10,8 @@ import {
 import type { NodeChange, EdgeChange } from '@xyflow/react';
 import { useAppStore } from '../store/useAppStore';
 import { nodeTypes as registeredNodeTypes, runners } from '../nodes/registry';
+import { VALID_CONNECTIONS } from '../nodes/connections';
 import type { WorkflowNode, Edge } from '../types';
-
-/** Valid connection rules: sourceHandle → targetHandle type checking. */
-const VALID_CONNECTIONS: [string, string][] = [
-  ['textPrompt.text', 'promptEnhance.textIn'],
-  ['textPrompt.text', 'imageGeneration.prompt'],
-  ['promptEnhance.text', 'imageGeneration.prompt'],
-  ['imageGeneration.image', 'imageDisplay.image'],
-];
 
 export function Canvas() {
   const nodeTypes = useMemo(() => registeredNodeTypes, []);

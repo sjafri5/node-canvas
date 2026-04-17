@@ -7,24 +7,30 @@ import { promptEnhanceRunner } from './promptEnhance/runner';
 import { ImageGenerationNode } from './imageGeneration/ImageGenerationNode';
 import { imageGenerationRunner } from './imageGeneration/runner';
 import { ImageDisplayNode } from './imageDisplay/ImageDisplayNode';
+import { ReferenceImageNode } from './referenceImage/ReferenceImageNode';
+import { referenceImageRunner } from './referenceImage/runner';
+import { ImageToImageNode } from './imageToImage/ImageToImageNode';
+import { imageToImageRunner } from './imageToImage/runner';
+import { ImageToVideoNode } from './imageToVideo/ImageToVideoNode';
+import { imageToVideoRunner } from './imageToVideo/runner';
+import { VideoDisplayNode } from './videoDisplay/VideoDisplayNode';
 
 export const nodeTypes: NodeTypes = {
   textPrompt: TextPromptNode,
   promptEnhance: PromptEnhanceNode,
   imageGeneration: ImageGenerationNode,
   imageDisplay: ImageDisplayNode,
-};
-
-// Placeholder runners for V2 node types — replaced with real implementations in Milestones 1–4
-const notImplemented = async () => {
-  throw new Error('Runner not implemented yet');
+  referenceImage: ReferenceImageNode,
+  imageToImage: ImageToImageNode,
+  imageToVideo: ImageToVideoNode,
+  videoDisplay: VideoDisplayNode,
 };
 
 export const runners: RunnerRegistry = {
   textPrompt: textPromptRunner,
   promptEnhance: promptEnhanceRunner,
   imageGeneration: imageGenerationRunner,
-  referenceImage: notImplemented as RunnerRegistry['referenceImage'],
-  imageToImage: notImplemented as RunnerRegistry['imageToImage'],
-  imageToVideo: notImplemented as RunnerRegistry['imageToVideo'],
+  referenceImage: referenceImageRunner,
+  imageToImage: imageToImageRunner,
+  imageToVideo: imageToVideoRunner,
 };
