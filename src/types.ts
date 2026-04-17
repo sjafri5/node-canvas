@@ -37,8 +37,11 @@ export type WorkflowNode = TextPromptNode | PromptEnhanceNode | ImageGenerationN
 /** Nodes that have a runner and produce output. ImageDisplayNode is a sink — no runner, no output. */
 export type ExecutableNode = TextPromptNode | PromptEnhanceNode | ImageGenerationNode;
 
-/** The subset of NodeType values that correspond to ExecutableNode variants. */
-export type ExecutableNodeType = ExecutableNode['type'];
+/** Single source of truth for executable node type literals — used at both type and runtime level. */
+export const executableTypes = ['textPrompt', 'promptEnhance', 'imageGeneration'] as const;
+
+/** Derived from executableTypes so the type and runtime list can never drift. */
+export type ExecutableNodeType = (typeof executableTypes)[number];
 
 export interface Edge {
   id: string;

@@ -1,11 +1,12 @@
-import type { Workflow, ExecutableNodeType } from '../types';
+import type { Workflow, ExecutableNodeType, NodeType } from '../types';
+import { executableTypes } from '../types';
 import type { RunnerRegistry, OnStatusChange, RunContext } from './types';
 import { topoSort } from './topoSort';
 
-const EXECUTABLE_TYPES: Set<string> = new Set<string>(['textPrompt', 'promptEnhance', 'imageGeneration']);
+const EXECUTABLE_SET: ReadonlySet<string> = new Set<string>(executableTypes);
 
-function isExecutableType(type: string): type is ExecutableNodeType {
-  return EXECUTABLE_TYPES.has(type);
+function isExecutableType(type: NodeType): type is ExecutableNodeType {
+  return EXECUTABLE_SET.has(type);
 }
 
 /**
