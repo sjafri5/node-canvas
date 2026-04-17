@@ -44,6 +44,14 @@ function createDefaultNode(type: NodeType, position: { x: number; y: number }): 
       return { ...base, type, data: {} as Record<string, never> };
     case 'imageDisplay':
       return { ...base, type, data: {} as Record<string, never> };
+    case 'referenceImage':
+      return { ...base, type, data: { imageDataUrl: '' } };
+    case 'imageToImage':
+      return { ...base, type, data: { prompt: '' } };
+    case 'imageToVideo':
+      return { ...base, type, data: {} };
+    case 'videoDisplay':
+      return { ...base, type, data: {} as Record<string, never> };
   }
 }
 

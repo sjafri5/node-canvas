@@ -56,6 +56,15 @@ function mockRegistry(overrides?: Partial<RunnerRegistry>): RunnerRegistry {
     imageGeneration: vi.fn(async (_node, inputs) => ({
       imageUrl: `https://img.test/${String(inputs.prompt ?? 'unknown')}`,
     })),
+    referenceImage: vi.fn(async (node) => ({
+      imageUrl: node.data.imageDataUrl,
+    })),
+    imageToImage: vi.fn(async () => ({
+      imageUrl: 'https://img.test/img2img',
+    })),
+    imageToVideo: vi.fn(async () => ({
+      videoUrl: 'https://video.test/result.mp4',
+    })),
     ...overrides,
   };
 }

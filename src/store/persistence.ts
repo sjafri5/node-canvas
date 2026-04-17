@@ -8,6 +8,10 @@ const VALID_NODE_TYPES: ReadonlySet<string> = new Set<string>([
   'promptEnhance',
   'imageGeneration',
   'imageDisplay',
+  'referenceImage',
+  'imageToImage',
+  'imageToVideo',
+  'videoDisplay',
 ]);
 
 interface PersistedWorkflow {

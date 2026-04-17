@@ -15,8 +15,16 @@ export const nodeTypes: NodeTypes = {
   imageDisplay: ImageDisplayNode,
 };
 
+// Placeholder runners for V2 node types — replaced with real implementations in Milestones 1–4
+const notImplemented = async () => {
+  throw new Error('Runner not implemented yet');
+};
+
 export const runners: RunnerRegistry = {
   textPrompt: textPromptRunner,
   promptEnhance: promptEnhanceRunner,
   imageGeneration: imageGenerationRunner,
+  referenceImage: notImplemented as RunnerRegistry['referenceImage'],
+  imageToImage: notImplemented as RunnerRegistry['imageToImage'],
+  imageToVideo: notImplemented as RunnerRegistry['imageToVideo'],
 };

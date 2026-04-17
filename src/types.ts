@@ -1,4 +1,12 @@
-export type NodeType = 'textPrompt' | 'promptEnhance' | 'imageGeneration' | 'imageDisplay';
+export type NodeType =
+  | 'textPrompt'
+  | 'promptEnhance'
+  | 'imageGeneration'
+  | 'imageDisplay'
+  | 'referenceImage'
+  | 'imageToImage'
+  | 'imageToVideo'
+  | 'videoDisplay';
 export type NodeStatus = 'idle' | 'running' | 'success' | 'error';
 
 interface BaseNode {
@@ -32,13 +40,57 @@ export interface ImageDisplayNode extends BaseNode {
   data: Record<string, never>;
 }
 
-export type WorkflowNode = TextPromptNode | PromptEnhanceNode | ImageGenerationNode | ImageDisplayNode;
+export interface ReferenceImageNode extends BaseNode {
+  type: 'referenceImage';
+  data: { imageDataUrl: string; label?: string };
+  output?: { imageUrl: string };
+}
 
-/** Nodes that have a runner and produce output. ImageDisplayNode is a sink — no runner, no output. */
-export type ExecutableNode = TextPromptNode | PromptEnhanceNode | ImageGenerationNode;
+export interface ImageToImageNode extends BaseNode {
+  type: 'imageToImage';
+  data: { prompt: string; strength?: number };
+  output?: { imageUrl: string };
+}
+
+export interface ImageToVideoNode extends BaseNode {
+  type: 'imageToVideo';
+  data: { motionPrompt?: string; durationSeconds?: number };
+  output?: { videoUrl: string };
+}
+
+export interface VideoDisplayNode extends BaseNode {
+  type: 'videoDisplay';
+  data: Record<string, never>;
+}
+
+export type WorkflowNode =
+  | TextPromptNode
+  | PromptEnhanceNode
+  | ImageGenerationNode
+  | ImageDisplayNode
+  | ReferenceImageNode
+  | ImageToImageNode
+  | ImageToVideoNode
+  | VideoDisplayNode;
+
+/** Nodes that have a runner and produce output. Display nodes are sinks — no runner, no output. */
+export type ExecutableNode =
+  | TextPromptNode
+  | PromptEnhanceNode
+  | ImageGenerationNode
+  | ReferenceImageNode
+  | ImageToImageNode
+  | ImageToVideoNode;
 
 /** Single source of truth for executable node type literals — used at both type and runtime level. */
-export const executableTypes = ['textPrompt', 'promptEnhance', 'imageGeneration'] as const;
+export const executableTypes = [
+  'textPrompt',
+  'promptEnhance',
+  'imageGeneration',
+  'referenceImage',
+  'imageToImage',
+  'imageToVideo',
+] as const;
 
 /** Derived from executableTypes so the type and runtime list can never drift. */
 export type ExecutableNodeType = (typeof executableTypes)[number];
