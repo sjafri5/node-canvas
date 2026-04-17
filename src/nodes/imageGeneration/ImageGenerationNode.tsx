@@ -1,8 +1,10 @@
-import { Handle, Position } from '@xyflow/react';
+import { Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { ImageGenerationNode as ImageGenNodeType } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { StatusBadge } from '../StatusBadge';
+import { NodeHandle } from '../NodeHandle';
+import { DeleteButton } from '../DeleteButton';
 
 type ImageGenNodeProps = NodeProps & { data: ImageGenNodeType['data'] };
 
@@ -13,14 +15,33 @@ export function ImageGenerationNode({ id }: ImageGenNodeProps) {
   const error = node?.error;
 
   return (
-    <div className="relative min-w-[280px] rounded-lg border border-blue-300 bg-white p-3 shadow-sm">
+    <div
+      className="group relative min-w-[280px] rounded-lg border p-3"
+      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+    >
       <StatusBadge status={status} />
-      <div className="mb-2 text-xs font-semibold text-blue-600">Image Generation</div>
-      <div className="text-xs text-gray-400">flux/schnell</div>
-      {hasOutput && <div className="mt-2 text-xs font-medium text-green-600">Generated</div>}
-      {error && <div className="mt-2 text-xs text-red-500">{error}</div>}
-      <Handle type="target" position={Position.Left} id="prompt" className="!bg-blue-500" />
-      <Handle type="source" position={Position.Right} id="image" className="!bg-blue-500" />
+      <DeleteButton nodeId={id} />
+      <div
+        className="mb-1 mt-4 text-xs font-semibold"
+        style={{ color: 'var(--text-primary)' }}
+      >
+        Image Generation
+      </div>
+      <div className="font-mono text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+        flux/schnell
+      </div>
+      {hasOutput && (
+        <div className="mt-2 text-xs font-medium" style={{ color: 'var(--status-success)' }}>
+          Generated
+        </div>
+      )}
+      {error && (
+        <div className="mt-2 text-xs" style={{ color: 'var(--status-error)', overflowWrap: 'break-word' }}>
+          {error}
+        </div>
+      )}
+      <NodeHandle type="target" position={Position.Left} id="prompt" label="prompt" />
+      <NodeHandle type="source" position={Position.Right} id="image" label="image" />
     </div>
   );
 }

@@ -1,7 +1,9 @@
-import { Handle, Position, useNodeConnections } from '@xyflow/react';
+import { Position, useNodeConnections } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { ImageDisplayNode as ImageDisplayNodeType } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
+import { NodeHandle } from '../NodeHandle';
+import { DeleteButton } from '../DeleteButton';
 
 type ImageDisplayNodeProps = NodeProps & { data: ImageDisplayNodeType['data'] };
 
@@ -22,20 +24,28 @@ export function ImageDisplayNode({ id }: ImageDisplayNodeProps) {
   const status = useAppStore((s) => s.nodes.find((n) => n.id === id)?.status ?? 'idle');
 
   return (
-    <div className="relative min-w-[400px] rounded-lg border border-green-300 bg-white p-3 shadow-sm">
-      <div className="mb-2 text-xs font-semibold text-green-600">Image Display</div>
+    <div
+      className="group relative min-w-[400px] rounded-lg border p-3"
+      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+    >
+      <DeleteButton nodeId={id} />
+      <div
+        className="mb-2 text-xs font-semibold"
+        style={{ color: 'var(--text-primary)' }}
+      >
+        Image Display
+      </div>
       {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt="Result"
-          className="w-full rounded"
-        />
+        <img src={imageUrl} alt="Result" className="w-full rounded" />
       ) : (
-        <div className="flex h-32 items-center justify-center rounded bg-gray-50 text-xs text-gray-400">
+        <div
+          className="flex h-32 items-center justify-center rounded text-xs"
+          style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-tertiary)' }}
+        >
           {status === 'idle' ? 'Connect an image source' : 'Waiting for image...'}
         </div>
       )}
-      <Handle type="target" position={Position.Left} id="image" className="!bg-green-500" />
+      <NodeHandle type="target" position={Position.Left} id="image" label="image" />
     </div>
   );
 }
