@@ -2,7 +2,7 @@ import type { Workflow, ExecutableNodeType } from '../types';
 import type { RunnerRegistry, OnStatusChange, RunContext } from './types';
 import { topoSort } from './topoSort';
 
-const EXECUTABLE_TYPES: Set<string> = new Set<string>(['textPrompt', 'imageGeneration']);
+const EXECUTABLE_TYPES: Set<string> = new Set<string>(['textPrompt', 'promptEnhance', 'imageGeneration']);
 
 function isExecutableType(type: string): type is ExecutableNodeType {
   return EXECUTABLE_TYPES.has(type);

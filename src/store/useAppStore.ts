@@ -36,6 +36,8 @@ function createDefaultNode(type: NodeType, position: { x: number; y: number }): 
   switch (type) {
     case 'textPrompt':
       return { ...base, type, data: { prompt: '' } };
+    case 'promptEnhance':
+      return { ...base, type, data: {} as Record<string, never> };
     case 'imageGeneration':
       return { ...base, type, data: {} as Record<string, never> };
     case 'imageDisplay':

@@ -1,4 +1,4 @@
-export type NodeType = 'textPrompt' | 'imageGeneration' | 'imageDisplay';
+export type NodeType = 'textPrompt' | 'promptEnhance' | 'imageGeneration' | 'imageDisplay';
 export type NodeStatus = 'idle' | 'running' | 'success' | 'error';
 
 interface BaseNode {
@@ -21,12 +21,24 @@ export interface ImageGenerationNode extends BaseNode {
   output?: { imageUrl: string };
 }
 
+export interface PromptEnhanceNode extends BaseNode {
+  type: 'promptEnhance';
+  data: Record<string, never>;
+  output?: { text: string };
+}
+
 export interface ImageDisplayNode extends BaseNode {
   type: 'imageDisplay';
   data: Record<string, never>;
 }
 
-export type WorkflowNode = TextPromptNode | ImageGenerationNode | ImageDisplayNode;
+export type WorkflowNode = TextPromptNode | PromptEnhanceNode | ImageGenerationNode | ImageDisplayNode;
+
+/** Nodes that have a runner and produce output. ImageDisplayNode is a sink — no runner, no output. */
+export type ExecutableNode = TextPromptNode | PromptEnhanceNode | ImageGenerationNode;
+
+/** The subset of NodeType values that correspond to ExecutableNode variants. */
+export type ExecutableNodeType = ExecutableNode['type'];
 
 export interface Edge {
   id: string;
