@@ -6,7 +6,7 @@ import { runWorkflow as engineRunWorkflow } from '../engine/runWorkflow';
 import type { RunnerRegistry } from '../engine/types';
 import { CycleError } from '../engine/types';
 import { createId } from '../lib/id';
-import { loadFromStorage, createDebouncedSave } from './persistence';
+import { loadFromStorage, createDebouncedSave, isValidWorkflow } from './persistence';
 
 interface AppStore {
   // graph
@@ -24,6 +24,8 @@ interface AppStore {
   applyEdgeChanges: (changes: EdgeChange<Edge>[]) => void;
 
   clearCanvas: () => void;
+  exportWorkflow: () => string;
+  importWorkflow: (json: string) => void;
 
   // execution
   isRunning: boolean;
@@ -93,6 +95,31 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   clearCanvas: () => {
     set({ nodes: [], edges: [] });
+  },
+
+  exportWorkflow: () => {
+    const { nodes, edges } = get();
+    const stripped = nodes.map((n) => ({
+      id: n.id,
+      type: n.type,
+      position: n.position,
+      data: n.data,
+    }));
+    return JSON.stringify({ version: 1, nodes: stripped, edges }, null, 2);
+  },
+
+  importWorkflow: (json: string) => {
+    const parsed: unknown = JSON.parse(json);
+    if (!isValidWorkflow(parsed)) {
+      throw new Error('Invalid workflow file: wrong version or shape');
+    }
+    const resetNodes = parsed.nodes.map((n: WorkflowNode) => ({
+      ...n,
+      status: 'idle' as const,
+      error: undefined,
+      output: undefined,
+    })) as WorkflowNode[];
+    set({ nodes: resetNodes, edges: parsed.edges });
   },
 
   isRunning: false,

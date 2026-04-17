@@ -9,7 +9,7 @@ interface PersistedWorkflow {
   edges: Edge[];
 }
 
-function isValidWorkflow(data: unknown): data is PersistedWorkflow {
+export function isValidWorkflow(data: unknown): data is PersistedWorkflow {
   if (data == null || typeof data !== 'object') return false;
   const obj = data as Record<string, unknown>;
   return (
