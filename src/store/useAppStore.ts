@@ -23,6 +23,8 @@ interface AppStore {
   applyNodeChanges: (changes: NodeChange<WorkflowNode>[]) => void;
   applyEdgeChanges: (changes: EdgeChange<Edge>[]) => void;
 
+  clearCanvas: () => void;
+
   // execution
   isRunning: boolean;
   runWorkflow: (registry: RunnerRegistry) => Promise<void>;
@@ -85,6 +87,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set((s) => ({
       edges: rfApplyEdgeChanges(changes, s.edges) as Edge[],
     }));
+  },
+
+  clearCanvas: () => {
+    set({ nodes: [], edges: [] });
   },
 
   isRunning: false,

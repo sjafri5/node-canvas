@@ -27,6 +27,7 @@ export function Canvas() {
   const applyEdgeChanges = useAppStore((s) => s.applyEdgeChanges);
   const connect = useAppStore((s) => s.connect);
   const runWorkflow = useAppStore((s) => s.runWorkflow);
+  const clearCanvas = useAppStore((s) => s.clearCanvas);
   const isRunning = useAppStore((s) => s.isRunning);
 
   const onNodesChange = useCallback(
@@ -76,6 +77,12 @@ export function Canvas() {
     void runWorkflow(runners);
   }, [runWorkflow]);
 
+  const handleClear = useCallback(() => {
+    if (window.confirm('Clear all nodes and edges? This cannot be undone.')) {
+      clearCanvas();
+    }
+  }, [clearCanvas]);
+
   return (
     <div className="relative flex-1">
       <ReactFlow
@@ -91,17 +98,28 @@ export function Canvas() {
         <Background />
         <Controls />
       </ReactFlow>
-      <button
-        className={`absolute top-4 right-4 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow transition-colors ${
-          isRunning
-            ? 'cursor-not-allowed bg-gray-400'
-            : 'bg-indigo-600 hover:bg-indigo-700'
-        }`}
-        disabled={isRunning}
-        onClick={handleRun}
-      >
-        {isRunning ? 'Running...' : 'Run'}
-      </button>
+      <div className="absolute top-4 right-4 flex gap-2">
+        <button
+          className={`rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm transition-colors ${
+            isRunning ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-50'
+          }`}
+          disabled={isRunning}
+          onClick={handleClear}
+        >
+          Clear
+        </button>
+        <button
+          className={`rounded-lg px-4 py-2 text-sm font-semibold text-white shadow transition-colors ${
+            isRunning
+              ? 'cursor-not-allowed bg-gray-400'
+              : 'bg-indigo-600 hover:bg-indigo-700'
+          }`}
+          disabled={isRunning}
+          onClick={handleRun}
+        >
+          {isRunning ? 'Running...' : 'Run'}
+        </button>
+      </div>
     </div>
   );
 }
