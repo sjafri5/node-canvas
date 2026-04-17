@@ -1,17 +1,8 @@
-export type NodeType =
-  | 'textPrompt'
-  | 'promptEnhance'
-  | 'imageGeneration'
-  | 'imageDisplay'
-  | 'referenceImage'
-  | 'imageToImage'
-  | 'imageToVideo'
-  | 'videoDisplay';
 export type NodeStatus = 'idle' | 'running' | 'success' | 'error';
 
 interface BaseNode {
   id: string;
-  type: NodeType;
+  type: string;
   position: { x: number; y: number };
   status: NodeStatus;
   error?: string;
@@ -72,6 +63,9 @@ export type WorkflowNode =
   | ImageToImageNode
   | ImageToVideoNode
   | VideoDisplayNode;
+
+/** Derived from WorkflowNode union — adding a node type updates this automatically. */
+export type NodeType = WorkflowNode['type'];
 
 /** Nodes that have a runner and produce output. Display nodes are sinks — no runner, no output. */
 export type ExecutableNode =
