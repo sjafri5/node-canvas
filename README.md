@@ -49,12 +49,13 @@ These are deliberate scope cuts, not oversights.
 - **Real-time collaboration** — would reach for Yjs or Liveblocks.
 - **Undo/redo** — would implement as a command stack over the Zustand store.
 - **Video models** — the runner registry pattern makes this a single-file addition.
+- **Workflow templates / techniques** — basic JSON export/import is shipped; saved subgraph templates are the next step.
 - **Mobile layout** — desktop-only for a technical demo.
 - **Run cancellation** — `AbortSignal` is plumbed through `RunContext` but not wired to the UI. One-line change when needed.
 
 ## Testing
 
-29 tests across 6 files. Coverage focuses on where logic lives: the execution engine (topological sort, workflow runner, error isolation, input propagation), persistence (round-trip, version migration, corrupt-data fallback), and node runners (mocked fetch, error paths). React components aren't unit-tested — React Flow owns the interaction layer, and the components are thin wiring on top of it.
+33 tests across 7 files. Coverage focuses on where logic lives: the execution engine (topological sort, workflow runner, error isolation, input propagation), persistence (round-trip, version migration, corrupt-data fallback), and node runners (mocked fetch, error paths). React components aren't unit-tested — React Flow owns the interaction layer, and the components are thin wiring on top of it.
 
 ```bash
 pnpm test         # single run

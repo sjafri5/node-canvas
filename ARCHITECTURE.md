@@ -51,7 +51,7 @@ API keys live exclusively in serverless functions. `api/generate/image.ts` reads
 - **Branching / comparative runs.** The DAG already supports fan-out — one Text Prompt feeding three Image Generation nodes works today. What's missing is a UI affordance to wire it quickly and a view to compare outputs side-by-side.
 - **Undo/redo.** A command stack over the Zustand store. Every mutation becomes a command with `apply` and `invert`. The store is already the single owner, so this is additive.
 - **Server-side execution.** Move the engine (already pure, no DOM) into a queue worker. Stream status back over WebSocket. The `OnStatusChange` callback is the seam — the UI just gets events from a different source.
-- **Techniques.** Saved subgraphs as reusable templates. Serialize to JSON, rewrite IDs on import, merge into the current workflow.
+- **Techniques.** Basic JSON export/import is shipped — full workflow round-trip with validation. The next step is saved subgraph templates: select a subset of nodes, export as a technique, import into an existing workflow by rewriting IDs and merging rather than replacing.
 
 ## Known rough edges
 
