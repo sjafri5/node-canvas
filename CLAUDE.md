@@ -132,11 +132,15 @@ Specifically, before:
 
 ```bash
 pnpm install
-cp .env.example .env.local       # then fill in FAL_KEY and OPENAI_API_KEY
-pnpm dev                         # Vite + Vercel dev for /api
+cp .env.example .env.local       # then fill in FAL_KEY
+pnpm dev                         # Vite only (frontend — no /api routes)
+pnpm dev:full                    # Vercel dev (frontend + /api serverless functions)
 pnpm test                        # Vitest (watch)
 pnpm lint                        # ESLint
 pnpm typecheck                   # tsc --noEmit
 pnpm build
 pnpm verify                      # lint + typecheck + test — run before commit
 ```
+
+**Note:** `pnpm dev:full` requires a one-time `vercel login`. It runs the full
+stack including `/api/generate/image`. Use `pnpm dev` for frontend-only work.
