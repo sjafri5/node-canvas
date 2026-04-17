@@ -157,7 +157,7 @@ export function Canvas() {
         deleteKeyCode={['Backspace', 'Delete']}
         fitView
       >
-        <Background variant={"dots" as never} color="#1f1f22" gap={24} size={1} />
+        <Background variant={"dots" as never} color="#2e2e33" gap={24} size={1.5} />
         <Controls />
       </ReactFlow>
       {importError && (

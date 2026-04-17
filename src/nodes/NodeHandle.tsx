@@ -20,9 +20,9 @@ export function NodeHandle({ type, position, id, label }: NodeHandleProps) {
       }}
     >
       <span
-        className="pointer-events-none absolute whitespace-nowrap font-mono text-[10px]"
+        className="pointer-events-none absolute whitespace-nowrap font-mono text-[11px]"
         style={{
-          color: 'var(--text-tertiary)',
+          color: 'var(--text-secondary)',
           [isLeft ? 'left' : 'right']: '14px',
         }}
       >

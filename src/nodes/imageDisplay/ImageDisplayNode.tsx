@@ -35,16 +35,18 @@ export function ImageDisplayNode({ id }: ImageDisplayNodeProps) {
       >
         Image Display
       </div>
-      {imageUrl ? (
-        <img src={imageUrl} alt="Result" className="w-full rounded" />
-      ) : (
-        <div
-          className="flex h-32 items-center justify-center rounded text-xs"
-          style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-tertiary)' }}
-        >
-          {status === 'idle' ? 'Connect an image source' : 'Waiting for image...'}
-        </div>
-      )}
+      <div className="p-1">
+        {imageUrl ? (
+          <img src={imageUrl} alt="Result" className="w-full rounded-md" />
+        ) : (
+          <div
+            className="flex h-32 items-center justify-center rounded-md text-xs"
+            style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-tertiary)' }}
+          >
+            {status === 'idle' ? 'Connect an image source' : 'Waiting for image...'}
+          </div>
+        )}
+      </div>
       <NodeHandle type="target" position={Position.Left} id="image" label="image" />
     </div>
   );

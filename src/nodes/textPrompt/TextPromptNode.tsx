@@ -20,7 +20,7 @@ export function TextPromptNode({ id, data }: TextPromptNodeProps) {
       <StatusBadge status={status} />
       <DeleteButton nodeId={id} />
       <div
-        className="mb-2 mt-4 text-xs font-semibold"
+        className="mb-2 mt-6 text-xs font-semibold"
         style={{ color: 'var(--text-primary)' }}
       >
         Text Prompt

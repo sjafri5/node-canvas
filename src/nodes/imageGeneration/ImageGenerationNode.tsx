@@ -22,7 +22,7 @@ export function ImageGenerationNode({ id }: ImageGenNodeProps) {
       <StatusBadge status={status} />
       <DeleteButton nodeId={id} />
       <div
-        className="mb-1 mt-4 text-xs font-semibold"
+        className="mb-1 mt-6 text-xs font-semibold"
         style={{ color: 'var(--text-primary)' }}
       >
         Image Generation
