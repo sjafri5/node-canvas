@@ -1,73 +1,92 @@
-# React + TypeScript + Vite
+# Node Canvas
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A node-based visual canvas for chaining AI image generations. Built in a day as a take-home.
 
-Currently, two official plugins are available:
+[Live demo](https://node-canvas-zeta.vercel.app)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+![demo](./docs/demo.gif)
 
-## React Compiler
+## Quick start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm install
+cp .env.example .env.local   # add your FAL_KEY
+pnpm dev:full                # vercel dev — frontend + API proxy on :5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+`pnpm dev:full` requires a one-time `vercel login`. Use `pnpm dev` for frontend-only work without the image generation API.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Architecture
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Three decisions shape this codebase:
+
+- **The execution engine (`src/engine/`) is pure TypeScript.** No React, no DOM, no `fetch`. It takes a workflow graph, topologically sorts it, and walks the result calling registered runners. That means the orchestration logic is unit-testable in milliseconds with mocked runners.
+- **Executable nodes and display sinks are a compile-time distinction.** `RunnerRegistry` only accepts keys from `ExecutableNodeType` — you cannot register a runner for `imageDisplay`. The type system prevents a whole class of mistakes.
+- **Zustand is the single source of truth.** React Flow renders from the store and dispatches changes back. The store never derives state from React Flow — one direction, one owner.
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full walkthrough and [SPEC.md](./SPEC.md) for the pre-implementation technical spec.
+
+## Stack
+
+| Layer | Choice | Why |
+|---|---|---|
+| Build | Vite | Fast, zero-config for React/TS |
+| Language | TypeScript (strict, noUncheckedIndexedAccess) | Catches real bugs; discriminated unions drive the domain model |
+| Canvas | @xyflow/react | De facto for node-based UIs; saves weeks of drag/connect/zoom work |
+| State | Zustand | Idiomatic with React Flow; simpler than Redux for a single-store app |
+| Styling | Tailwind CSS | Fast iteration, no CSS file sprawl |
+| AI | fal.ai (flux/schnell) | Cheap, fast, simple REST |
+| Tests | Vitest + Testing Library | Vite-native, fast feedback loop |
+| Deploy | Vercel | Zero-config for Vite + serverless functions as API proxy |
+
+## What's out of scope
+
+These are deliberate scope cuts, not oversights.
+
+- **Auth / accounts** — single-user local tool for the demo. Would add Postgres + NextAuth if productionizing.
+- **Backend database** — localStorage with a version field is enough at this scale. The persistence layer is designed for easy migration.
+- **Real-time collaboration** — would reach for Yjs or Liveblocks.
+- **Undo/redo** — would implement as a command stack over the Zustand store.
+- **Video models** — the runner registry pattern makes this a single-file addition.
+- **Mobile layout** — desktop-only for a technical demo.
+- **Run cancellation** — `AbortSignal` is plumbed through `RunContext` but not wired to the UI. One-line change when needed.
+
+## Testing
+
+26 tests across 5 files. Coverage focuses on where logic lives: the execution engine (topological sort, workflow runner, error isolation, input propagation), persistence (round-trip, version migration, corrupt-data fallback), and node runners (mocked fetch, error paths). React components aren't unit-tested — React Flow owns the interaction layer, and the components are thin wiring on top of it.
+
+```bash
+pnpm test         # single run
+pnpm test:watch   # watch mode
+pnpm verify       # lint + typecheck + test
+```
+
+## Project structure
+
+```
+src/
+  app/
+    App.tsx              # shell: sidebar + canvas
+    Canvas.tsx           # React Flow ↔ store wiring, Run/Clear buttons
+    Sidebar.tsx          # node palette
+  engine/                # pure TypeScript — no React, no DOM
+    types.ts             # RunContext, NodeRunner, RunnerRegistry, CycleError
+    topoSort.ts          # Kahn's algorithm with cycle detection
+    runWorkflow.ts       # walks topo order, gathers inputs, calls runners
+  nodes/
+    registry.ts          # node type → component + runner mapping
+    StatusBadge.tsx      # shared status indicator
+    textPrompt/          # component + passthrough runner
+    imageGeneration/     # component + fal.ai runner
+    imageDisplay/        # component only (sink — no runner)
+  store/
+    useAppStore.ts       # single Zustand store
+    persistence.ts       # localStorage with version field, debounced save
+  types.ts               # domain types: WorkflowNode, Edge, Workflow
+  lib/
+    api.ts               # fetch client for /api/generate/*
+    id.ts                # nanoid wrapper
+api/
+  generate/
+    image.ts             # Vercel serverless — proxies fal.ai, keeps key server-side
 ```
