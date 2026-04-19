@@ -31,6 +31,7 @@ function compressImage(file: File, maxSize: number, quality: number): Promise<st
 export function CharacterLockListView() {
   const characters = useAppStore((s) => s.characters);
   const createCharacter = useAppStore((s) => s.createCharacter);
+  const deleteCharacter = useAppStore((s) => s.deleteCharacter);
   const generateAllViews = useAppStore((s) => s.generateAllViews);
   const charCount = Object.keys(characters).length;
 
@@ -198,12 +199,13 @@ export function CharacterLockListView() {
                 : char.referenceImageUrl;
 
               return (
-                <button
+                <div
                   key={char.id}
-                  className="flex items-center gap-4 rounded-lg border p-4 text-left transition-colors"
+                  className="group relative flex items-center gap-4 rounded-lg border p-4 transition-colors"
                   style={{
                     background: 'var(--bg-surface)',
                     borderColor: 'var(--border-subtle)',
+                    cursor: 'pointer',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'var(--bg-surface-hover)';
@@ -213,6 +215,17 @@ export function CharacterLockListView() {
                   }}
                   onClick={() => navigate(`/templates/character-lock/${char.id}`)}
                 >
+                  <button
+                    className="absolute right-2 top-2 rounded p-1 text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
+                    style={{ color: 'var(--text-tertiary)' }}
+                    title="Delete character"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteCharacter(char.id);
+                    }}
+                  >
+                    &times;
+                  </button>
                   {thumbnail && (
                     <img
                       src={thumbnail}
@@ -240,7 +253,7 @@ export function CharacterLockListView() {
                         : `${String(lockedCount)} of 8 locked`}
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
