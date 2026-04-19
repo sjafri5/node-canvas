@@ -81,32 +81,48 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (node, inp
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS, ctx.signal);
 
-    const pollParams = new URLSearchParams({ statusUrl, responseUrl });
-    const statusRes = await ctx.fetchFn(
-      `/api/generate/poll-video?${pollParams.toString()}`,
-      { signal: ctx.signal },
-    );
+    // Check job status via generic fal.ai proxy
+    const statusRes = await ctx.fetchFn('/api/generate/fal-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: statusUrl }),
+      signal: ctx.signal,
+    });
 
     if (!statusRes.ok) {
       const text = await statusRes.text();
       throw new Error(`Video status check failed (${String(statusRes.status)}): ${text}`);
     }
 
-    const statusData = (await statusRes.json()) as {
-      status: string;
-      videoUrl?: string;
-      error?: string;
-    };
+    const statusData = (await statusRes.json()) as { status: string };
 
-    if (statusData.status === 'completed' && statusData.videoUrl) {
-      return { video: statusData.videoUrl };
+    if (statusData.status === 'COMPLETED') {
+      // Fetch the result via proxy
+      const resultRes = await ctx.fetchFn('/api/generate/fal-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: responseUrl }),
+        signal: ctx.signal,
+      });
+
+      if (!resultRes.ok) {
+        const text = await resultRes.text();
+        throw new Error(`Video result fetch failed (${String(resultRes.status)}): ${text}`);
+      }
+
+      const resultData = (await resultRes.json()) as { video?: { url: string } };
+      if (!resultData.video?.url) {
+        throw new Error('No video URL in completed result');
+      }
+
+      return { video: resultData.video.url };
     }
 
-    if (statusData.status === 'failed') {
-      throw new Error(statusData.error ?? 'Video generation failed');
+    if (statusData.status === 'FAILED') {
+      throw new Error('Video generation failed on fal.ai');
     }
 
-    // status === 'pending' — continue polling
+    // IN_QUEUE, IN_PROGRESS — continue polling
   }
 
   throw new Error('Video generation timed out after 180 seconds');

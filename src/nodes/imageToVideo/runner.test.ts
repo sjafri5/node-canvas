@@ -22,26 +22,40 @@ function makeCtx(fetchFn: RunContext['fetchFn']): RunContext {
 }
 
 describe('imageToVideoRunner', () => {
-  it('submits job with model and polls until completed', async () => {
-    let pollCount = 0;
+  it('submits job and polls until completed', async () => {
+    let proxyCallCount = 0;
     const mockFetch = vi.fn().mockImplementation((url: string) => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-123', status: 'pending', model: 'veo-3-fast', statusUrl: 'https://queue.fal.run/status/123', responseUrl: 'https://queue.fal.run/response/123' }),
+          json: async () => ({
+            jobId: 'job-123',
+            status: 'pending',
+            statusUrl: 'https://queue.fal.run/status/123',
+            responseUrl: 'https://queue.fal.run/response/123',
+          }),
         });
       }
-      if (typeof url === 'string' && url.includes('/api/generate/poll-video')) {
-        pollCount++;
-        if (pollCount >= 2) {
+      if (url === '/api/generate/fal-proxy') {
+        proxyCallCount++;
+        // First two calls: status check returns pending, then COMPLETED
+        // Third call: result fetch returns video
+        if (proxyCallCount === 1) {
           return Promise.resolve({
             ok: true,
-            json: async () => ({ status: 'completed', videoUrl: 'https://video.test/result.mp4' }),
+            json: async () => ({ status: 'IN_PROGRESS' }),
           });
         }
+        if (proxyCallCount === 2) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: 'COMPLETED' }),
+          });
+        }
+        // Result fetch
         return Promise.resolve({
           ok: true,
-          json: async () => ({ status: 'pending' }),
+          json: async () => ({ video: { url: 'https://video.test/result.mp4' } }),
         });
       }
       return Promise.resolve({ ok: false, status: 404, text: async () => 'Not found' });
@@ -65,20 +79,34 @@ describe('imageToVideoRunner', () => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-456', status: 'pending', model: 'kling-v3-pro', statusUrl: 'https://queue.fal.run/status/456', responseUrl: 'https://queue.fal.run/response/456' }),
+          json: async () => ({
+            jobId: 'job-456',
+            status: 'pending',
+            statusUrl: 'https://queue.fal.run/status/456',
+            responseUrl: 'https://queue.fal.run/response/456',
+          }),
         });
       }
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({ status: 'completed', videoUrl: 'https://video.test/v2.mp4' }),
-      });
+      // Status check returns COMPLETED immediately
+      if (url === '/api/generate/fal-proxy') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ status: 'COMPLETED' }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404, text: async () => 'Not found' });
     });
 
-    await imageToVideoRunner(
-      makeNode({ model: 'kling-v3-pro', durationSeconds: 10 }),
-      { image: 'https://example.com/img.png' },
-      makeCtx(mockFetch as unknown as typeof fetch),
-    );
+    // This will fail at result fetch (no video), but we just need to check the submission
+    try {
+      await imageToVideoRunner(
+        makeNode({ model: 'kling-v3-pro', durationSeconds: 10 }),
+        { image: 'https://example.com/img.png' },
+        makeCtx(mockFetch as unknown as typeof fetch),
+      );
+    } catch {
+      // Expected — result fetch returns COMPLETED again instead of video
+    }
 
     const submitCall = mockFetch.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(submitCall[1].body as string) as Record<string, unknown>;
@@ -86,29 +114,26 @@ describe('imageToVideoRunner', () => {
     expect(body.durationSeconds).toBe(10);
   });
 
-  it('passes model to status polling URL', async () => {
+  it('returns directly for synchronous models', async () => {
     const mockFetch = vi.fn().mockImplementation((url: string) => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-789', status: 'pending', model: 'kling-v3-pro', statusUrl: 'https://queue.fal.run/status/789', responseUrl: 'https://queue.fal.run/response/789' }),
+          json: async () => ({ status: 'completed', videoUrl: 'https://video.test/sync.mp4' }),
         });
       }
-      return Promise.resolve({
-        ok: true,
-        json: async () => ({ status: 'completed', videoUrl: 'https://video.test/v.mp4' }),
-      });
+      return Promise.resolve({ ok: false, status: 404, text: async () => 'Not found' });
     });
 
-    await imageToVideoRunner(
-      makeNode({ model: 'kling-v3-pro' }),
+    const result = await imageToVideoRunner(
+      makeNode({ model: 'veo-3.1-fast' }),
       { image: 'https://example.com/img.png' },
       makeCtx(mockFetch as unknown as typeof fetch),
     );
 
-    const statusCall = mockFetch.mock.calls[1] as [string, RequestInit];
-    expect(statusCall[0]).toContain('statusUrl=');
-    expect(statusCall[0]).toContain('responseUrl=');
+    expect(result).toEqual({ video: 'https://video.test/sync.mp4' });
+    // No polling calls should have been made
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it('throws when upstream image is missing', async () => {
@@ -140,12 +165,17 @@ describe('imageToVideoRunner', () => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-fail', status: 'pending', model: 'veo-3-fast', statusUrl: 'https://queue.fal.run/status/fail', responseUrl: 'https://queue.fal.run/response/fail' }),
+          json: async () => ({
+            jobId: 'job-fail',
+            status: 'pending',
+            statusUrl: 'https://queue.fal.run/status/fail',
+            responseUrl: 'https://queue.fal.run/response/fail',
+          }),
         });
       }
       return Promise.resolve({
         ok: true,
-        json: async () => ({ status: 'failed', error: 'GPU out of memory' }),
+        json: async () => ({ status: 'FAILED' }),
       });
     });
 
@@ -155,6 +185,6 @@ describe('imageToVideoRunner', () => {
         { image: 'https://example.com/img.png' },
         makeCtx(mockFetch as unknown as typeof fetch),
       ),
-    ).rejects.toThrow('GPU out of memory');
+    ).rejects.toThrow('Video generation failed on fal.ai');
   });
 });
