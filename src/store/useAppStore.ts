@@ -18,6 +18,7 @@ interface AppStore {
     type: T,
     patch: Partial<Extract<WorkflowNode, { type: T }>['data']>,
   ) => void;
+  selectVariation: (nodeId: string, index: number) => void;
   connect: (edge: Omit<Edge, 'id'>) => void;
   deleteNode: (id: string) => void;
   applyNodeChanges: (changes: NodeChange<WorkflowNode>[]) => void;
@@ -38,21 +39,45 @@ function createDefaultNode(type: NodeType, position: { x: number; y: number }): 
   switch (type) {
     case 'textPrompt':
       return { ...base, type, data: { prompt: '' } };
-    case 'promptEnhance':
-      return { ...base, type, data: {} as Record<string, never> };
     case 'imageGeneration':
-      return { ...base, type, data: {} as Record<string, never> };
+      return {
+        ...base,
+        type,
+        data: { model: 'flux-schnell', aspectRatio: '1:1', variationCount: 1 },
+      };
     case 'imageDisplay':
       return { ...base, type, data: {} as Record<string, never> };
     case 'referenceImage':
       return { ...base, type, data: { imageDataUrl: '' } };
     case 'imageToImage':
-      return { ...base, type, data: { prompt: '' } };
+      return {
+        ...base,
+        type,
+        data: { prompt: '', strength: 0.7, model: 'flux-dev', variationCount: 1 },
+      };
     case 'imageToVideo':
-      return { ...base, type, data: {} };
+      return { ...base, type, data: { model: 'veo-3-fast', durationSeconds: 5 } };
     case 'videoDisplay':
       return { ...base, type, data: {} as Record<string, never> };
   }
+}
+
+/**
+ * Collect all node IDs that are transitively downstream of a source node.
+ */
+function getDownstreamNodeIds(nodeId: string, edges: Edge[]): Set<string> {
+  const downstream = new Set<string>();
+  const queue = [nodeId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const edge of edges) {
+      if (edge.source === current && !downstream.has(edge.target)) {
+        downstream.add(edge.target);
+        queue.push(edge.target);
+      }
+    }
+  }
+  return downstream;
 }
 
 const initial = loadFromStorage();
@@ -74,6 +99,34 @@ export const useAppStore = create<AppStore>((set, get) => ({
         // Safe cast: _type guarantees patch matches n.data's shape, and
         // the spread preserves the discriminant (n.type is unchanged).
         return { ...n, data: { ...n.data, ...patch } } as WorkflowNode;
+      }),
+    }));
+  },
+
+  selectVariation: (nodeId, index) => {
+    const { edges } = get();
+    const downstreamIds = getDownstreamNodeIds(nodeId, edges);
+
+    set((s) => ({
+      nodes: s.nodes.map((n) => {
+        if (n.id === nodeId && 'output' in n && n.output != null) {
+          const output = n.output as Record<string, unknown>;
+          const variations = output.variations as string[] | undefined;
+          if (!variations || index < 0 || index >= variations.length) return n;
+
+          // Determine the output key (image for imageGeneration, output for imageToImage)
+          const outputKey = n.type === 'imageToImage' ? 'output' : 'image';
+          return {
+            ...n,
+            data: { ...n.data, selectedVariationIndex: index },
+            output: { ...output, [outputKey]: variations[index] },
+          } as WorkflowNode;
+        }
+        // Reset downstream nodes to idle
+        if (downstreamIds.has(n.id)) {
+          return { ...n, status: 'idle' as const, error: undefined, output: undefined } as WorkflowNode;
+        }
+        return n;
       }),
     }));
   },

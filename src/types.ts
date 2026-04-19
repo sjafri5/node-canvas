@@ -8,6 +8,13 @@ interface BaseNode {
   error?: string;
 }
 
+export type ImageModel = 'flux-schnell' | 'flux-dev' | 'flux-pro-1.1';
+export type ImageToImageModel = 'flux-schnell' | 'flux-dev';
+export type VideoModel = 'veo-3-fast' | 'gen-3-turbo';
+export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:5' | '2:3';
+export type VariationCount = 1 | 2 | 4;
+export type ReferenceLabel = 'character' | 'location' | 'style' | 'other';
+
 export interface TextPromptNode extends BaseNode {
   type: 'textPrompt';
   data: { prompt: string };
@@ -16,14 +23,13 @@ export interface TextPromptNode extends BaseNode {
 
 export interface ImageGenerationNode extends BaseNode {
   type: 'imageGeneration';
-  data: Record<string, never>;
-  output?: { imageUrl: string };
-}
-
-export interface PromptEnhanceNode extends BaseNode {
-  type: 'promptEnhance';
-  data: Record<string, never>;
-  output?: { text: string };
+  data: {
+    model: ImageModel;
+    aspectRatio: AspectRatio;
+    variationCount: VariationCount;
+    selectedVariationIndex?: number;
+  };
+  output?: { image: string; variations?: string[] };
 }
 
 export interface ImageDisplayNode extends BaseNode {
@@ -33,20 +39,30 @@ export interface ImageDisplayNode extends BaseNode {
 
 export interface ReferenceImageNode extends BaseNode {
   type: 'referenceImage';
-  data: { imageDataUrl: string; label?: string };
-  output?: { imageUrl: string };
+  data: { imageDataUrl: string; label?: ReferenceLabel };
+  output?: { image: string };
 }
 
 export interface ImageToImageNode extends BaseNode {
   type: 'imageToImage';
-  data: { prompt: string; strength?: number };
-  output?: { imageUrl: string };
+  data: {
+    prompt: string;
+    strength: number;
+    model: ImageToImageModel;
+    variationCount: VariationCount;
+    selectedVariationIndex?: number;
+  };
+  output?: { output: string; variations?: string[] };
 }
 
 export interface ImageToVideoNode extends BaseNode {
   type: 'imageToVideo';
-  data: { motionPrompt?: string; durationSeconds?: number };
-  output?: { videoUrl: string };
+  data: {
+    motionPrompt?: string;
+    durationSeconds: 5 | 10;
+    model: VideoModel;
+  };
+  output?: { video: string };
 }
 
 export interface VideoDisplayNode extends BaseNode {
@@ -56,7 +72,6 @@ export interface VideoDisplayNode extends BaseNode {
 
 export type WorkflowNode =
   | TextPromptNode
-  | PromptEnhanceNode
   | ImageGenerationNode
   | ImageDisplayNode
   | ReferenceImageNode
@@ -70,7 +85,6 @@ export type NodeType = WorkflowNode['type'];
 /** Nodes that have a runner and produce output. Display nodes are sinks — no runner, no output. */
 export type ExecutableNode =
   | TextPromptNode
-  | PromptEnhanceNode
   | ImageGenerationNode
   | ReferenceImageNode
   | ImageToImageNode
@@ -79,7 +93,6 @@ export type ExecutableNode =
 /** Single source of truth for executable node type literals — used at both type and runtime level. */
 export const executableTypes = [
   'textPrompt',
-  'promptEnhance',
   'imageGeneration',
   'referenceImage',
   'imageToImage',
