@@ -28,10 +28,10 @@ describe('imageToVideoRunner', () => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-123', status: 'pending', model: 'veo-3-fast' }),
+          json: async () => ({ jobId: 'job-123', status: 'pending', model: 'veo-3-fast', statusUrl: 'https://queue.fal.run/status/123', responseUrl: 'https://queue.fal.run/response/123' }),
         });
       }
-      if (typeof url === 'string' && url.includes('/api/generate/video-status')) {
+      if (typeof url === 'string' && url.includes('/api/generate/poll-video')) {
         pollCount++;
         if (pollCount >= 2) {
           return Promise.resolve({
@@ -65,7 +65,7 @@ describe('imageToVideoRunner', () => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-456', status: 'pending', model: 'gen-3-turbo' }),
+          json: async () => ({ jobId: 'job-456', status: 'pending', model: 'gen-3-turbo', statusUrl: 'https://queue.fal.run/status/456', responseUrl: 'https://queue.fal.run/response/456' }),
         });
       }
       return Promise.resolve({
@@ -91,7 +91,7 @@ describe('imageToVideoRunner', () => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-789', status: 'pending', model: 'gen-3-turbo' }),
+          json: async () => ({ jobId: 'job-789', status: 'pending', model: 'gen-3-turbo', statusUrl: 'https://queue.fal.run/status/789', responseUrl: 'https://queue.fal.run/response/789' }),
         });
       }
       return Promise.resolve({
@@ -107,7 +107,8 @@ describe('imageToVideoRunner', () => {
     );
 
     const statusCall = mockFetch.mock.calls[1] as [string, RequestInit];
-    expect(statusCall[0]).toContain('model=gen-3-turbo');
+    expect(statusCall[0]).toContain('statusUrl=');
+    expect(statusCall[0]).toContain('responseUrl=');
   });
 
   it('throws when upstream image is missing', async () => {
@@ -139,7 +140,7 @@ describe('imageToVideoRunner', () => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-fail', status: 'pending', model: 'veo-3-fast' }),
+          json: async () => ({ jobId: 'job-fail', status: 'pending', model: 'veo-3-fast', statusUrl: 'https://queue.fal.run/status/fail', responseUrl: 'https://queue.fal.run/response/fail' }),
         });
       }
       return Promise.resolve({

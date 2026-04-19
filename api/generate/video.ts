@@ -63,7 +63,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
 
-      const data = (await falRes.json()) as { request_id?: string };
+      const data = (await falRes.json()) as {
+        request_id?: string;
+        status_url?: string;
+        response_url?: string;
+      };
       const requestId = data.request_id;
 
       if (!requestId) {
@@ -71,7 +75,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
 
-      res.status(202).json({ jobId: requestId, status: 'pending', model: modelKey });
+      res.status(202).json({
+        jobId: requestId,
+        status: 'pending',
+        model: modelKey,
+        statusUrl: data.status_url,
+        responseUrl: data.response_url,
+      });
     } else {
       // Synchronous model (veo-3-fast) — blocks until result is ready
       // veo3 expects duration as a string like '4s', '6s', '8s'

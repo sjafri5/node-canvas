@@ -55,6 +55,8 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (node, inp
     status: string;
     model?: string;
     videoUrl?: string;
+    statusUrl?: string;
+    responseUrl?: string;
   };
 
   // Synchronous models (e.g. veo-3-fast) return the result directly
@@ -62,12 +64,10 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (node, inp
     return { video: submitData.videoUrl };
   }
 
-  const jobId = submitData.jobId;
-  if (!jobId) {
-    throw new Error('No jobId returned from video submission');
+  const { statusUrl, responseUrl } = submitData;
+  if (!statusUrl || !responseUrl) {
+    throw new Error('No polling URLs returned from video submission');
   }
-
-  const resolvedModel = submitData.model ?? model;
 
   // Poll for completion (queue-based models like gen-3-turbo)
   const deadline = Date.now() + POLL_TIMEOUT_MS;
@@ -75,8 +75,9 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (node, inp
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS, ctx.signal);
 
+    const pollParams = new URLSearchParams({ statusUrl, responseUrl });
     const statusRes = await ctx.fetchFn(
-      `/api/generate/video-status?jobId=${jobId}&model=${resolvedModel}`,
+      `/api/generate/poll-video?${pollParams.toString()}`,
       { signal: ctx.signal },
     );
 

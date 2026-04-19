@@ -1,9 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const QUEUE_ENDPOINTS: Record<string, string> = {
-  'gen-3-turbo': 'fal-ai/runway-gen3/turbo/image-to-video',
-};
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -16,26 +12,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { jobId, model } = req.query as { jobId?: string; model?: string };
-  if (!jobId || typeof jobId !== 'string') {
-    res.status(400).json({ error: 'Missing jobId' });
-    return;
-  }
+  const { statusUrl, responseUrl } = req.query as {
+    statusUrl?: string;
+    responseUrl?: string;
+  };
 
-  const endpoint = QUEUE_ENDPOINTS[model ?? 'gen-3-turbo'];
-  if (!endpoint) {
-    res.status(400).json({ error: `Model ${model ?? 'unknown'} does not use queue polling` });
+  if (!statusUrl || !responseUrl) {
+    res.status(400).json({ error: 'Missing statusUrl or responseUrl' });
     return;
   }
 
   try {
-    // Check job status
-    const statusRes = await fetch(
-      `https://queue.fal.run/${endpoint}/requests/${jobId}/status`,
-      {
-        headers: { Authorization: `Key ${falKey}` },
-      },
-    );
+    // Check job status using fal.ai's provided status URL
+    const statusRes = await fetch(statusUrl, {
+      headers: { Authorization: `Key ${falKey}` },
+    });
 
     if (!statusRes.ok) {
       const text = await statusRes.text();
@@ -46,13 +37,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const statusData = (await statusRes.json()) as { status: string };
 
     if (statusData.status === 'COMPLETED') {
-      // Fetch the result
-      const resultRes = await fetch(
-        `https://queue.fal.run/${endpoint}/requests/${jobId}`,
-        {
-          headers: { Authorization: `Key ${falKey}` },
-        },
-      );
+      // Fetch the result using fal.ai's provided response URL
+      const resultRes = await fetch(responseUrl, {
+        headers: { Authorization: `Key ${falKey}` },
+      });
 
       if (!resultRes.ok) {
         const text = await resultRes.text();
