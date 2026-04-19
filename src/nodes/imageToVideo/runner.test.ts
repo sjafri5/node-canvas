@@ -10,8 +10,8 @@ function makeNode(overrides?: Partial<ImageToVideoNode['data']>): ImageToVideoNo
     position: { x: 0, y: 0 },
     status: 'idle',
     data: {
-      model: 'seedance-2.0',
-      durationSeconds: 5,
+      model: 'veo-3.1-fast',
+      durationSeconds: 4,
       ...overrides,
     },
   };

@@ -56,7 +56,7 @@ function createDefaultNode(type: NodeType, position: { x: number; y: number }): 
         data: { prompt: '', strength: 0.25, model: 'nano-banana-pro-edit', variationCount: 1 },
       };
     case 'imageToVideo':
-      return { ...base, type, data: { model: 'seedance-2.0', durationSeconds: 5 } };
+      return { ...base, type, data: { model: 'veo-3.1-fast', durationSeconds: 4 } };
     case 'videoDisplay':
       return { ...base, type, data: {} as Record<string, never> };
   }

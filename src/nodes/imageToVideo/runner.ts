@@ -34,7 +34,7 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (node, inp
     'veo-3.1-fast': VEO_DURATIONS,
     'veo-3.1': VEO_DURATIONS,
   };
-  const validDurations = DURATION_MAP[model] ?? STANDARD_DURATIONS;
+  const validDurations = DURATION_MAP[model] ?? VEO_DURATIONS;
   const raw = node.data.durationSeconds ?? validDurations[0]!;
   const durationSeconds = validDurations.includes(raw) ? raw : validDurations[0]!;
 

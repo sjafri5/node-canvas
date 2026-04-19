@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const DEFAULT_MODEL = 'seedance-2.0';
+  const DEFAULT_MODEL = 'veo-3.1-fast';
   const rawKey = model ?? DEFAULT_MODEL;
   const modelKey = (QUEUE_MODELS[rawKey] || SYNC_MODELS[rawKey]) ? rawKey : DEFAULT_MODEL;
   const queueEndpoint = QUEUE_MODELS[modelKey];

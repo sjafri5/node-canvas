@@ -71,18 +71,18 @@ export function ImageToVideoNode({ id, data }: ImageToVideoNodeProps) {
             value={data.model}
             onChange={(e) => {
               const newModel = e.target.value as VideoModel;
-              const durations = DURATION_BY_MODEL[newModel] ?? DURATION_BY_MODEL['seedance-2.0']!;
+              const durations = DURATION_BY_MODEL[newModel] ?? DURATION_BY_MODEL['veo-3.1-fast']!;
               const firstDuration = Number(durations[0]!.value);
               updateNodeData(id, 'imageToVideo', { model: newModel, durationSeconds: firstDuration });
             }}
           >
-            <optgroup label="Reference-faithful">
-              <option value="seedance-2.0">seedance-2.0</option>
-              <option value="kling-v3-pro">kling-v3/pro — $0.50</option>
-            </optgroup>
             <optgroup label="Cinematic">
               <option value="veo-3.1-fast">veo-3.1/fast — $0.25</option>
               <option value="veo-3.1">veo-3.1 — $1.50</option>
+            </optgroup>
+            <optgroup label="Reference-faithful (queue)">
+              <option value="seedance-2.0">seedance-2.0</option>
+              <option value="kling-v3-pro">kling-v3/pro — $0.50</option>
             </optgroup>
           </select>
         </label>
@@ -97,7 +97,7 @@ export function ImageToVideoNode({ id, data }: ImageToVideoNodeProps) {
         <SegmentedControl
           label="duration"
           value={String(data.durationSeconds)}
-          options={DURATION_BY_MODEL[data.model] ?? DURATION_BY_MODEL['seedance-2.0']!}
+          options={DURATION_BY_MODEL[data.model] ?? DURATION_BY_MODEL['veo-3.1-fast']!}
           onChange={(v) => updateNodeData(id, 'imageToVideo', { durationSeconds: Number(v) })}
         />
       </div>
