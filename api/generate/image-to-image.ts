@@ -1,9 +1,26 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const MODEL_ENDPOINTS: Record<string, string> = {
-  'flux-schnell': 'fal-ai/flux/schnell/image-to-image',
-  'flux-dev': 'fal-ai/flux/dev/image-to-image',
+const ENDPOINTS: Record<string, string> = {
+  'nano-banana-pro-edit': 'fal-ai/nano-banana-pro/edit',
+  'flux-pro-kontext': 'fal-ai/flux-pro/kontext',
 };
+
+function buildBody(
+  model: string,
+  imageUrl: string,
+  prompt: string,
+  strength: number,
+): Record<string, unknown> {
+  switch (model) {
+    case 'nano-banana-pro-edit':
+      // nano-banana-pro/edit takes image_urls (array)
+      return { image_urls: [imageUrl], prompt };
+    case 'flux-pro-kontext':
+      return { image_url: imageUrl, prompt };
+    default:
+      return { image_url: imageUrl, prompt, strength, num_images: 1 };
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -33,7 +50,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const endpoint = MODEL_ENDPOINTS[model ?? 'flux-dev'] ?? MODEL_ENDPOINTS['flux-dev'];
+  const modelKey = model ?? 'nano-banana-pro-edit';
+  const endpoint = ENDPOINTS[modelKey] ?? ENDPOINTS['nano-banana-pro-edit'];
 
   try {
     const falRes = await fetch(`https://fal.run/${endpoint}`, {
@@ -42,12 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         Authorization: `Key ${falKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        image_url: imageUrl,
-        prompt,
-        strength: strength ?? 0.7,
-        num_images: 1,
-      }),
+      body: JSON.stringify(buildBody(modelKey, imageUrl, prompt, strength ?? 0.25)),
     });
 
     if (!falRes.ok) {

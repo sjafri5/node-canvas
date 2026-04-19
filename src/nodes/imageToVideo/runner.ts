@@ -27,8 +27,14 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (node, inp
   const { model, motionPrompt } = node.data;
   // Clamp to valid values per model; old localStorage data may have stale durations
   const VEO_DURATIONS = [4, 6, 8];
-  const GEN3_DURATIONS = [5, 10];
-  const validDurations = model === 'gen-3-turbo' ? GEN3_DURATIONS : VEO_DURATIONS;
+  const STANDARD_DURATIONS = [5, 10];
+  const DURATION_MAP: Record<string, number[]> = {
+    'seedance-2.0': STANDARD_DURATIONS,
+    'kling-v3-pro': STANDARD_DURATIONS,
+    'veo-3.1-fast': VEO_DURATIONS,
+    'veo-3.1': VEO_DURATIONS,
+  };
+  const validDurations = DURATION_MAP[model] ?? STANDARD_DURATIONS;
   const raw = node.data.durationSeconds ?? validDurations[0]!;
   const durationSeconds = validDurations.includes(raw) ? raw : validDurations[0]!;
 

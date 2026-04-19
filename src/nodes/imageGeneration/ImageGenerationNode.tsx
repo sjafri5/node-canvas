@@ -1,19 +1,19 @@
 import { Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import type { ImageGenerationNode as ImageGenNodeType } from '../../types';
+import type { ImageGenerationNode as ImageGenNodeType, ImageModel } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { StatusBadge } from '../StatusBadge';
 import { NodeHandle } from '../NodeHandle';
 import { DeleteButton } from '../DeleteButton';
-import { NodeSelect } from '../NodeSelect';
 import { SegmentedControl } from '../SegmentedControl';
 import { VariationGrid } from '../VariationGrid';
 
-const MODEL_OPTIONS = [
-  { value: 'flux-schnell', label: 'flux/schnell' },
-  { value: 'flux-dev', label: 'flux/dev' },
-  { value: 'flux-pro-1.1', label: 'flux-pro/1.1' },
-];
+const MODEL_INFO: Record<string, string> = {
+  'flux-schnell': 'Fast iteration — $0.003/img',
+  'nano-banana-pro': 'Google — best realism & subject identity',
+  'flux-dev': 'High quality — $0.025/img',
+  'recraft-v4-pro': 'Best typography & design — $0.04/img',
+};
 
 const ASPECT_OPTIONS = [
   { value: '1:1', label: '1:1' },
@@ -54,13 +54,32 @@ export function ImageGenerationNode({ id, data }: ImageGenNodeProps) {
       </div>
 
       <div className="mb-2 flex flex-col gap-1.5">
-        <NodeSelect
-          label="model"
-          value={data.model}
-          options={MODEL_OPTIONS}
-          onChange={(v) => updateNodeData(id, 'imageGeneration', { model: v as ImageGenNodeType['data']['model'] })}
-        />
-        <NodeSelect
+        <label className="nodrag flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+          <span className="font-mono" style={{ color: 'var(--text-tertiary)' }}>model</span>
+          <select
+            className="rounded border px-1.5 py-0.5 text-[11px] focus:outline-none"
+            style={{
+              background: 'var(--bg-surface)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-primary)',
+            }}
+            value={data.model}
+            onChange={(e) => updateNodeData(id, 'imageGeneration', { model: e.target.value as ImageModel })}
+          >
+            <optgroup label="Fast">
+              <option value="flux-schnell">flux/schnell — $0.003</option>
+            </optgroup>
+            <optgroup label="Quality">
+              <option value="nano-banana-pro">nano-banana-pro — $0.04</option>
+              <option value="flux-dev">flux/dev — $0.025</option>
+              <option value="recraft-v4-pro">recraft-v4/pro — $0.04</option>
+            </optgroup>
+          </select>
+        </label>
+        <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
+          {MODEL_INFO[data.model] ?? ''}
+        </div>
+        <SegmentedControl
           label="ratio"
           value={data.aspectRatio}
           options={ASPECT_OPTIONS}

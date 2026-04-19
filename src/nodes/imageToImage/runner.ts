@@ -17,7 +17,7 @@ export const imageToImageRunner: NodeRunner<ImageToImageNode> = async (node, inp
       body: JSON.stringify({
         imageUrl: upstreamImage,
         prompt,
-        strength: strength ?? 0.7,
+        strength: strength ?? 0.25,
         model,
       }),
       signal: ctx.signal,

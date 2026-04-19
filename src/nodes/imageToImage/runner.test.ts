@@ -12,7 +12,7 @@ function makeNode(prompt: string, overrides?: Partial<ImageToImageNode['data']>)
     data: {
       prompt,
       strength: 0.7,
-      model: 'flux-dev',
+      model: 'nano-banana-pro-edit',
       variationCount: 1,
       ...overrides,
     },
@@ -31,7 +31,7 @@ describe('imageToImageRunner', () => {
     });
 
     const result = await imageToImageRunner(
-      makeNode('make it noir', { strength: 0.5, model: 'flux-schnell' }),
+      makeNode('make it noir', { strength: 0.5, model: 'nano-banana-pro-edit' }),
       { image: 'https://example.com/source.png' },
       makeCtx(mockFetch as unknown as typeof fetch),
     );
@@ -45,7 +45,7 @@ describe('imageToImageRunner', () => {
           imageUrl: 'https://example.com/source.png',
           prompt: 'make it noir',
           strength: 0.5,
-          model: 'flux-schnell',
+          model: 'nano-banana-pro-edit',
         }),
       }),
     );

@@ -10,8 +10,8 @@ function makeNode(overrides?: Partial<ImageToVideoNode['data']>): ImageToVideoNo
     position: { x: 0, y: 0 },
     status: 'idle',
     data: {
-      model: 'veo-3-fast',
-      durationSeconds: 4,
+      model: 'seedance-2.0',
+      durationSeconds: 5,
       ...overrides,
     },
   };
@@ -65,7 +65,7 @@ describe('imageToVideoRunner', () => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-456', status: 'pending', model: 'gen-3-turbo', statusUrl: 'https://queue.fal.run/status/456', responseUrl: 'https://queue.fal.run/response/456' }),
+          json: async () => ({ jobId: 'job-456', status: 'pending', model: 'kling-v3-pro', statusUrl: 'https://queue.fal.run/status/456', responseUrl: 'https://queue.fal.run/response/456' }),
         });
       }
       return Promise.resolve({
@@ -75,14 +75,14 @@ describe('imageToVideoRunner', () => {
     });
 
     await imageToVideoRunner(
-      makeNode({ model: 'gen-3-turbo', durationSeconds: 10 }),
+      makeNode({ model: 'kling-v3-pro', durationSeconds: 10 }),
       { image: 'https://example.com/img.png' },
       makeCtx(mockFetch as unknown as typeof fetch),
     );
 
     const submitCall = mockFetch.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(submitCall[1].body as string) as Record<string, unknown>;
-    expect(body.model).toBe('gen-3-turbo');
+    expect(body.model).toBe('kling-v3-pro');
     expect(body.durationSeconds).toBe(10);
   });
 
@@ -91,7 +91,7 @@ describe('imageToVideoRunner', () => {
       if (url === '/api/generate/video') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ jobId: 'job-789', status: 'pending', model: 'gen-3-turbo', statusUrl: 'https://queue.fal.run/status/789', responseUrl: 'https://queue.fal.run/response/789' }),
+          json: async () => ({ jobId: 'job-789', status: 'pending', model: 'kling-v3-pro', statusUrl: 'https://queue.fal.run/status/789', responseUrl: 'https://queue.fal.run/response/789' }),
         });
       }
       return Promise.resolve({
@@ -101,7 +101,7 @@ describe('imageToVideoRunner', () => {
     });
 
     await imageToVideoRunner(
-      makeNode({ model: 'gen-3-turbo' }),
+      makeNode({ model: 'kling-v3-pro' }),
       { image: 'https://example.com/img.png' },
       makeCtx(mockFetch as unknown as typeof fetch),
     );

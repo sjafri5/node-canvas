@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const MODEL_ENDPOINTS: Record<string, string> = {
+const ENDPOINTS: Record<string, string> = {
   'flux-schnell': 'fal-ai/flux/schnell',
+  'nano-banana-pro': 'fal-ai/nano-banana-pro',
   'flux-dev': 'fal-ai/flux/dev',
-  'flux-pro-1.1': 'fal-ai/flux-pro/v1.1',
+  'recraft-v4-pro': 'fal-ai/recraft/v4/pro/text-to-image',
 };
 
 const ASPECT_RATIO_MAP: Record<string, string | { width: number; height: number }> = {
@@ -13,6 +14,17 @@ const ASPECT_RATIO_MAP: Record<string, string | { width: number; height: number 
   '4:5': { width: 832, height: 1040 },
   '2:3': { width: 832, height: 1248 },
 };
+
+function buildBody(model: string, prompt: string, aspectRatio: string): Record<string, unknown> {
+  const imageSize = ASPECT_RATIO_MAP[aspectRatio] ?? 'square_hd';
+
+  switch (model) {
+    case 'recraft-v4-pro':
+      return { prompt, image_size: imageSize };
+    default:
+      return { prompt, image_size: imageSize, num_images: 1 };
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -37,8 +49,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const endpoint = MODEL_ENDPOINTS[model ?? 'flux-schnell'] ?? MODEL_ENDPOINTS['flux-schnell'];
-  const imageSize = ASPECT_RATIO_MAP[aspectRatio ?? '1:1'] ?? 'square_hd';
+  const modelKey = model ?? 'flux-schnell';
+  const endpoint = ENDPOINTS[modelKey] ?? ENDPOINTS['flux-schnell'];
 
   try {
     const falRes = await fetch(`https://fal.run/${endpoint}`, {
@@ -47,11 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         Authorization: `Key ${falKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        prompt,
-        image_size: imageSize,
-        num_images: 1,
-      }),
+      body: JSON.stringify(buildBody(modelKey, prompt, aspectRatio ?? '1:1')),
     });
 
     if (!falRes.ok) {

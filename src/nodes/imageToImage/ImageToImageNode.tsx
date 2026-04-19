@@ -1,19 +1,18 @@
 import { Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import type { ImageToImageNode as ImageToImageNodeType } from '../../types';
+import type { ImageToImageNode as ImageToImageNodeType, ImageToImageModel } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { StatusBadge } from '../StatusBadge';
 import { NodeHandle } from '../NodeHandle';
 import { DeleteButton } from '../DeleteButton';
 import { EnhanceButton } from '../EnhanceButton';
-import { NodeSelect } from '../NodeSelect';
 import { SegmentedControl } from '../SegmentedControl';
 import { VariationGrid } from '../VariationGrid';
 
-const MODEL_OPTIONS = [
-  { value: 'flux-schnell', label: 'flux/schnell' },
-  { value: 'flux-dev', label: 'flux/dev' },
-];
+const MODEL_INFO: Record<string, string> = {
+  'nano-banana-pro-edit': 'Google — best subject preservation',
+  'flux-pro-kontext': 'Best for composition edits — $0.05/img',
+};
 
 const STRENGTH_PRESETS = [
   { value: '0.25', label: 'Preserve' },
@@ -53,12 +52,25 @@ export function ImageToImageNode({ id, data }: ImageToImageNodeProps) {
       </div>
 
       <div className="mb-2 flex flex-col gap-1.5">
-        <NodeSelect
-          label="model"
-          value={data.model}
-          options={MODEL_OPTIONS}
-          onChange={(v) => updateNodeData(id, 'imageToImage', { model: v as ImageToImageNodeType['data']['model'] })}
-        />
+        <label className="nodrag flex items-center gap-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+          <span className="font-mono" style={{ color: 'var(--text-tertiary)' }}>model</span>
+          <select
+            className="rounded border px-1.5 py-0.5 text-[11px] focus:outline-none"
+            style={{
+              background: 'var(--bg-surface)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-primary)',
+            }}
+            value={data.model}
+            onChange={(e) => updateNodeData(id, 'imageToImage', { model: e.target.value as ImageToImageModel })}
+          >
+            <option value="nano-banana-pro-edit">nano-banana-pro/edit — $0.04</option>
+            <option value="flux-pro-kontext">flux-pro/kontext — $0.05</option>
+          </select>
+        </label>
+        <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
+          {MODEL_INFO[data.model] ?? ''}
+        </div>
         <SegmentedControl
           label="style"
           value={STRENGTH_PRESETS.find((p) => Number(p.value) === data.strength)?.value ?? ''}

@@ -1,12 +1,35 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+/** Queue-based models — async, need polling. */
 const QUEUE_MODELS: Record<string, string> = {
-  'gen-3-turbo': 'fal-ai/runway-gen3/turbo/image-to-video',
+  'seedance-2.0': 'fal-ai/bytedance/seedance-2.0/image-to-video',
+  'kling-v3-pro': 'fal-ai/kling-video/v3/pro/image-to-video',
 };
 
+/** Synchronous models — block until result. */
 const SYNC_MODELS: Record<string, string> = {
-  'veo-3-fast': 'fal-ai/veo3/fast',
+  'veo-3.1-fast': 'fal-ai/veo3.1/fast/image-to-video',
+  'veo-3.1': 'fal-ai/veo3.1/image-to-video',
 };
+
+function buildBody(
+  model: string,
+  imageUrl: string,
+  motionPrompt: string,
+  duration: number,
+): Record<string, unknown> {
+  switch (model) {
+    case 'seedance-2.0':
+      return { image_url: imageUrl, prompt: motionPrompt, duration: `${String(duration)}s` };
+    case 'kling-v3-pro':
+      return { image_url: imageUrl, prompt: motionPrompt, duration: `${String(duration)}s` };
+    case 'veo-3.1-fast':
+    case 'veo-3.1':
+      return { image_url: imageUrl, prompt: motionPrompt, duration: `${String(duration)}s` };
+    default:
+      return { image_url: imageUrl, prompt: motionPrompt, duration };
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -32,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const modelKey = model ?? 'veo-3-fast';
+  const modelKey = model ?? 'seedance-2.0';
   const queueEndpoint = QUEUE_MODELS[modelKey];
   const syncEndpoint = SYNC_MODELS[modelKey];
 
@@ -41,20 +64,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const prompt = motionPrompt || 'gentle ambient motion';
+  const dur = durationSeconds ?? 5;
+
   try {
     if (queueEndpoint) {
-      // Async queue-based model (gen-3-turbo)
       const falRes = await fetch(`https://queue.fal.run/${queueEndpoint}`, {
         method: 'POST',
         headers: {
           Authorization: `Key ${falKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          image_url: imageUrl,
-          prompt: motionPrompt || 'gentle ambient motion',
-          duration: durationSeconds ?? 5,
-        }),
+        body: JSON.stringify(buildBody(modelKey, imageUrl, prompt, dur)),
       });
 
       if (!falRes.ok) {
@@ -68,35 +89,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         status_url?: string;
         response_url?: string;
       };
-      const requestId = data.request_id;
 
-      if (!requestId) {
+      if (!data.request_id) {
         res.status(502).json({ error: 'No request_id returned from fal.ai' });
         return;
       }
 
       res.status(202).json({
-        jobId: requestId,
+        jobId: data.request_id,
         status: 'pending',
         model: modelKey,
         statusUrl: data.status_url,
         responseUrl: data.response_url,
       });
     } else {
-      // Synchronous model (veo-3-fast) — blocks until result is ready
-      // veo3 expects duration as a string like '4s', '6s', '8s'
-      const dur = durationSeconds ?? 4;
       const falRes = await fetch(`https://fal.run/${syncEndpoint!}`, {
         method: 'POST',
         headers: {
           Authorization: `Key ${falKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          image_url: imageUrl,
-          prompt: motionPrompt || 'gentle ambient motion',
-          duration: `${String(dur)}s`,
-        }),
+        body: JSON.stringify(buildBody(modelKey, imageUrl, prompt, dur)),
       });
 
       if (!falRes.ok) {
@@ -113,7 +126,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
 
-      // Return completed result directly — no polling needed
       res.status(200).json({ status: 'completed', videoUrl, model: modelKey });
     }
   } catch (err) {

@@ -8,9 +8,9 @@ interface BaseNode {
   error?: string;
 }
 
-export type ImageModel = 'flux-schnell' | 'flux-dev' | 'flux-pro-1.1';
-export type ImageToImageModel = 'flux-schnell' | 'flux-dev';
-export type VideoModel = 'veo-3-fast' | 'gen-3-turbo';
+export type ImageModel = 'flux-schnell' | 'nano-banana-pro' | 'flux-dev' | 'recraft-v4-pro';
+export type ImageToImageModel = 'nano-banana-pro-edit' | 'flux-pro-kontext';
+export type VideoModel = 'seedance-2.0' | 'kling-v3-pro' | 'veo-3.1-fast' | 'veo-3.1';
 export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:5' | '2:3';
 export type VariationCount = 1 | 2 | 4;
 export type ReferenceLabel = 'character' | 'location' | 'style' | 'other';
