@@ -14,13 +14,13 @@ I picked the hardest problem in AI video production -- character drift. Every se
 
 The canvas from v1 is still there -- Character Lock is a new entry in the sidebar under Templates. Zero changes to `src/engine/`. Zero new node types. Templates are composed experiences on top of the engine -- exactly what the typed registry was designed to enable.
 
-The natural next template is Mini-drama Composer: pick a locked character, enter a premise, GPT drafts a 5-episode arc, output is Seedance-ready in a 5-layer format. Fully designed in SPEC_V3, scope-cut from this session. Shipping one great workflow is better than two rushed ones.
+The second template is Mini-drama Composer: pick a locked character, enter a premise, choose a tonal direction. GPT writes a 5-episode arc, then drafts each episode as a paste-ready Seedance 2.0 prompt in the 5-layer format I developed for my own micro-drama work -- shot framing, subject anchoring with @-referenced locked views, environment, lighting with specific source/direction vocabulary, and time-coded camera motion. Content moderation substitutions are automatic. The output is exactly what a Seedance user needs: reference setup instructions plus five 15-second shot lists, ready to paste. Two templates, zero engine changes.
 
 ## Architecture
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full walkthrough.
 
-Short version: a pure TypeScript engine (`src/engine/`) takes a typed workflow graph and a runner registry, does topological sort, executes nodes. Templates (`src/workflows/`) are composed experiences that reuse the engine, the store, and the node runners -- they don't modify any of them. Character Lock was added with zero changes to the engine.
+Short version: a pure TypeScript engine (`src/engine/`) takes a typed workflow graph and a runner registry, does topological sort, executes nodes. Templates (`src/workflows/`) are composed experiences that reuse the engine, the store, and the node runners -- they don't modify any of them. Two templates added (Character Lock + Mini-drama Composer) with zero changes to `src/engine/`.
 
 ## Quick start
 
@@ -50,7 +50,7 @@ pnpm dev:full                # vercel dev -- frontend + API proxy on :5173
 
 ## What's next
 
-**Mini-drama Composer.** Designed in [SPEC_V3.md](./SPEC_V3.md) section 8. Pick a locked character, enter a premise, GPT writes a 5-episode arc, output is Seedance-ready prompts in a 5-layer format. Scoped out of this session -- shipping one workflow well beats two poorly.
+**Seedance video generation.** Designed in [SPEC_V4.md](./SPEC_V4.md) section 8. Per-episode "Generate video" button on drafted episodes, calling `bytedance/seedance-2.0/reference-to-video` with the character's locked views as reference images. Opt-in, cost-disclosed. The prompt generation is the product today; video is the cherry on top.
 
 ## Known rough edges
 
@@ -63,7 +63,7 @@ pnpm dev:full                # vercel dev -- frontend + API proxy on :5173
 
 ## Testing
 
-68 tests across 12 files. Coverage focuses on where logic lives: execution engine (topo sort, error isolation, input propagation), character domain (slug, generateView, persistence migration), node runners (mocked fetch, parameter round-trip), and persistence (v1/v2 migration, character roundtrip).
+82 tests across 15 files. Coverage focuses on where logic lives: execution engine (topo sort, error isolation, input propagation), character domain (slug, generateView, persistence migration), node runners (mocked fetch, parameter round-trip), and persistence (v1/v2 migration, character roundtrip).
 
 ```bash
 pnpm test         # single run
@@ -85,13 +85,25 @@ src/
     imageToImage/, imageToVideo/,
     referenceImage/, imageDisplay/,
     videoDisplay/
+  miniDramas/                          # mini-drama composer domain
+    types.ts                           # Episode, MiniDrama, TonalPreset
+    systemPrompts.ts                   # arc + episode 5-layer prompts
+    tonalPresets.ts                    # 5 visual style presets
+    referenceSetup.ts                  # @-tag reference block builder
+    generateArc.ts, draftEpisode.ts    # GPT fetch helpers
+    exportMiniDrama.ts                 # bundle to .txt
   characters/                          # character lock domain
     types.ts                           # ViewId, Character, CharacterView
     generateView.ts                    # img2img fetch helper
     viewPrompts.ts                     # 8 canonical view prompts
     slug.ts                            # name -> id helper
   workflows/
-    characterLock/                     # template UI
+    miniDrama/                         # mini-drama composer UI
+      MiniDramaListView.tsx
+      MiniDramaDetailView.tsx
+      EpisodeCard.tsx
+      CollapsibleBlock.tsx
+    characterLock/                     # character lock UI
       CharacterLockListView.tsx        # list + inline setup
       CharacterLockDetailView.tsx      # 8-card approval grid
       ViewCard.tsx                     # single view card

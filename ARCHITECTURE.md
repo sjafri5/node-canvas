@@ -40,7 +40,7 @@ The alternative was adding a phantom `output?: { imageUrl: string }` to `ImageDi
 
 ## Persistence and version field
 
-`src/store/persistence.ts` subscribes to the store and writes `{ version: 2, nodes, edges, characters }` to localStorage, debounced at 300ms. v1 saves (pre-Character Lock) load with an empty characters record -- the migration path is a single `?? {}`. On init, `loadFromStorage()` validates the version and shape before hydrating. Wrong version, corrupt JSON, missing key, `localStorage` throwing — all fall back to an empty canvas. The version field exists because schema migration is the first thing that breaks when you iterate on a product like this. I didn't want to discover that mid-migration.
+`src/store/persistence.ts` subscribes to the store and writes `{ version: 3, nodes, edges, characters, miniDramas }` to localStorage, debounced at 300ms. v1 saves load with empty characters and miniDramas records; v2 saves load with empty miniDramas. Each migration is a single `?? {}`. On init, `loadFromStorage()` validates the version and shape before hydrating. Wrong version, corrupt JSON, missing key, `localStorage` throwing — all fall back to an empty canvas. The version field exists because schema migration is the first thing that breaks when you iterate on a product like this. I didn't want to discover that mid-migration.
 
 ## API keys and the proxy
 
@@ -54,7 +54,11 @@ Templates are routed experiences that reuse existing infrastructure without modi
 
 The bridge between templates and the canvas is the Reference Image node. It was extended with a "From character" source mode: select a completed character, pick a locked view, and the node populates its `imageDataUrl` from that view. The runner doesn't change -- it still reads `imageDataUrl` as before. Templates produce named assets; the canvas consumes them through an existing node type.
 
-**Adding Character Lock required zero changes to `src/engine/`.** The typed registry pattern designed to make "adding experiences additive" proved out. The characters slice was added to the store alongside the existing nodes/edges slice. Persistence was extended from v1 to v2 with a clean migration path. Routing was hand-rolled in ~50 lines. No new dependencies.
+**Mini-drama Composer** is the second template. It consumes Character Lock as a read-only data source -- it reads `Character.name` and locked view URLs, but never mutates characters. The composer writes a 5-episode arc via GPT-4o-mini (arc generation system prompt), then drafts each episode as a paste-ready Seedance 2.0 prompt using a per-episode system prompt that encodes the full 5-layer format: shot framing, @-referenced subject anchoring, environment, lighting with specific source vocabulary, and time-coded camera motion. The system prompts are the core artifact -- they encode the Seedance production skill into GPT instructions.
+
+Both templates use the existing `api/generate/text.ts` proxy (extended to accept custom system prompts alongside the legacy prompt-enhance mode). Neither template touches the DAG engine or node runners. Persistence migrated from v1 to v2 (characters) to v3 (miniDramas) with clean migration paths at each step.
+
+**Adding two templates required zero changes to `src/engine/`.** The typed registry pattern designed to make "adding experiences additive" proved out twice. Routing was hand-rolled in ~50 lines. No new dependencies.
 
 ## Where I'd go next
 
