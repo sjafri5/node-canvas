@@ -22,12 +22,13 @@ function buildBody(
     case 'seedance-2.0':
       return { image_url: imageUrl, prompt: motionPrompt, duration: `${String(duration)}s` };
     case 'kling-v3-pro':
-      return { image_url: imageUrl, prompt: motionPrompt, duration: `${String(duration)}s` };
+      // Kling expects duration as plain number string: '5', not '5s'
+      return { image_url: imageUrl, prompt: motionPrompt, duration: String(duration) };
     case 'veo-3.1-fast':
     case 'veo-3.1':
       return { image_url: imageUrl, prompt: motionPrompt, duration: `${String(duration)}s` };
     default:
-      return { image_url: imageUrl, prompt: motionPrompt, duration };
+      return { image_url: imageUrl, prompt: motionPrompt, duration: `${String(duration)}s` };
   }
 }
 
