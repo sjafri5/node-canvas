@@ -15,6 +15,13 @@ const MODEL_OPTIONS = [
   { value: 'flux-dev', label: 'flux/dev' },
 ];
 
+const STRENGTH_PRESETS = [
+  { value: '0.25', label: 'Preserve' },
+  { value: '0.4', label: 'Subtle' },
+  { value: '0.6', label: 'Balanced' },
+  { value: '0.8', label: 'Transform' },
+];
+
 const VARIATION_OPTIONS = [
   { value: '1', label: '1' },
   { value: '2', label: '2' },
@@ -51,6 +58,12 @@ export function ImageToImageNode({ id, data }: ImageToImageNodeProps) {
           value={data.model}
           options={MODEL_OPTIONS}
           onChange={(v) => updateNodeData(id, 'imageToImage', { model: v as ImageToImageNodeType['data']['model'] })}
+        />
+        <SegmentedControl
+          label="style"
+          value={STRENGTH_PRESETS.find((p) => Number(p.value) === data.strength)?.value ?? ''}
+          options={STRENGTH_PRESETS}
+          onChange={(v) => updateNodeData(id, 'imageToImage', { strength: Number(v) })}
         />
         <div className="nodrag flex items-center gap-2 text-[11px]">
           <span className="font-mono" style={{ color: 'var(--text-tertiary)' }}>strength</span>
