@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Video generation can take 60-120s; extend the function timeout
+export const config = { maxDuration: 300 };
+
 /** Queue-based models — async, need polling. */
 const QUEUE_MODELS: Record<string, string> = {
   'seedance-2.0': 'fal-ai/bytedance/seedance-2.0/image-to-video',
