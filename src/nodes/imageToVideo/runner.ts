@@ -18,11 +18,13 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (_node, inputs, ctx) => {
+export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (node, inputs, ctx) => {
   const upstreamImage = inputs.image;
   if (typeof upstreamImage !== 'string' || upstreamImage.trim() === '') {
     throw new Error('imageToVideo requires an upstream image');
   }
+
+  const { model, motionPrompt, durationSeconds } = node.data;
 
   // Submit job
   const submitRes = await ctx.fetchFn('/api/generate/video', {
@@ -30,8 +32,9 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (_node, in
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       imageUrl: upstreamImage,
-      motionPrompt: _node.data.motionPrompt,
-      durationSeconds: _node.data.durationSeconds ?? 5,
+      motionPrompt,
+      durationSeconds: durationSeconds ?? 5,
+      model,
     }),
     signal: ctx.signal,
   });
@@ -41,8 +44,9 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (_node, in
     throw new Error(`Video submission failed (${String(submitRes.status)}): ${text}`);
   }
 
-  const submitData = (await submitRes.json()) as { jobId: string; status: string };
+  const submitData = (await submitRes.json()) as { jobId: string; status: string; model?: string };
   const { jobId } = submitData;
+  const resolvedModel = submitData.model ?? model;
 
   // Poll for completion
   const deadline = Date.now() + POLL_TIMEOUT_MS;
@@ -50,9 +54,10 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (_node, in
   while (Date.now() < deadline) {
     await sleep(POLL_INTERVAL_MS, ctx.signal);
 
-    const statusRes = await ctx.fetchFn(`/api/generate/video-status?jobId=${jobId}`, {
-      signal: ctx.signal,
-    });
+    const statusRes = await ctx.fetchFn(
+      `/api/generate/video-status?jobId=${jobId}&model=${resolvedModel}`,
+      { signal: ctx.signal },
+    );
 
     if (!statusRes.ok) {
       const text = await statusRes.text();
@@ -66,7 +71,7 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (_node, in
     };
 
     if (statusData.status === 'completed' && statusData.videoUrl) {
-      return { videoUrl: statusData.videoUrl };
+      return { video: statusData.videoUrl };
     }
 
     if (statusData.status === 'failed') {

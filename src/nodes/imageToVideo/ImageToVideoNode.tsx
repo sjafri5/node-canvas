@@ -5,6 +5,19 @@ import { useAppStore } from '../../store/useAppStore';
 import { StatusBadge } from '../StatusBadge';
 import { NodeHandle } from '../NodeHandle';
 import { DeleteButton } from '../DeleteButton';
+import { EnhanceButton } from '../EnhanceButton';
+import { NodeSelect } from '../NodeSelect';
+import { SegmentedControl } from '../SegmentedControl';
+
+const MODEL_OPTIONS = [
+  { value: 'veo-3-fast', label: 'veo3/fast' },
+  { value: 'gen-3-turbo', label: 'gen-3 turbo' },
+];
+
+const DURATION_OPTIONS = [
+  { value: '5', label: '5s' },
+  { value: '10', label: '10s' },
+];
 
 type ImageToVideoNodeProps = NodeProps & { data: ImageToVideoNodeType['data'] };
 
@@ -25,11 +38,24 @@ export function ImageToVideoNode({ id, data }: ImageToVideoNodeProps) {
       <div className="mb-1 mt-6 text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
         Image to Video
       </div>
-      <div className="font-mono text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-        runway gen-3 turbo
+
+      <div className="mb-2 flex flex-col gap-1.5">
+        <NodeSelect
+          label="model"
+          value={data.model}
+          options={MODEL_OPTIONS}
+          onChange={(v) => updateNodeData(id, 'imageToVideo', { model: v as ImageToVideoNodeType['data']['model'] })}
+        />
+        <SegmentedControl
+          label="duration"
+          value={String(data.durationSeconds)}
+          options={DURATION_OPTIONS}
+          onChange={(v) => updateNodeData(id, 'imageToVideo', { durationSeconds: Number(v) as 5 | 10 })}
+        />
       </div>
+
       <textarea
-        className="nodrag mt-2 w-full resize-none rounded border p-2 text-sm transition-colors focus:outline-none"
+        className="nodrag w-full resize-none rounded border p-2 text-sm transition-colors focus:outline-none"
         style={{
           background: 'transparent',
           borderColor: 'var(--border-subtle)',
@@ -46,9 +72,13 @@ export function ImageToVideoNode({ id, data }: ImageToVideoNodeProps) {
         value={data.motionPrompt ?? ''}
         onChange={(e) => updateNodeData(id, 'imageToVideo', { motionPrompt: e.target.value })}
       />
+      <EnhanceButton
+        text={data.motionPrompt ?? ''}
+        onEnhanced={(enhanced) => updateNodeData(id, 'imageToVideo', { motionPrompt: enhanced })}
+      />
       {status === 'running' && (
         <div className="mt-1 text-xs" style={{ color: 'var(--status-running)' }}>
-          Rendering ~45s
+          Rendering...
         </div>
       )}
       {hasOutput && (

@@ -1,11 +1,19 @@
 import { useCallback, useRef } from 'react';
 import { Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import type { ReferenceImageNode as ReferenceImageNodeType } from '../../types';
+import type { ReferenceImageNode as ReferenceImageNodeType, ReferenceLabel } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { StatusBadge } from '../StatusBadge';
 import { NodeHandle } from '../NodeHandle';
 import { DeleteButton } from '../DeleteButton';
+import { NodeSelect } from '../NodeSelect';
+
+const LABEL_OPTIONS = [
+  { value: 'other', label: 'other' },
+  { value: 'character', label: 'character' },
+  { value: 'location', label: 'location' },
+  { value: 'style', label: 'style' },
+];
 
 type ReferenceImageNodeProps = NodeProps & { data: ReferenceImageNodeType['data'] };
 
@@ -44,14 +52,13 @@ export function ReferenceImageNode({ id, data }: ReferenceImageNodeProps) {
       const file = e.target.files?.[0];
       if (!file) return;
       const dataUrl = await compressImage(file, 1024, 0.8);
-      if (dataUrl.length > 2 * 1024 * 1024) {
-        // Soft warning — still proceed, but this risks localStorage limits
-      }
       updateNodeData(id, 'referenceImage', { imageDataUrl: dataUrl });
       e.target.value = '';
     },
     [id, updateNodeData],
   );
+
+  const label = data.label ?? 'other';
 
   return (
     <div
@@ -60,16 +67,29 @@ export function ReferenceImageNode({ id, data }: ReferenceImageNodeProps) {
     >
       <StatusBadge status={status} />
       <DeleteButton nodeId={id} />
-      <div className="mb-2 mt-6 text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+      <div className="mb-1 mt-6 text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
         Reference Image
       </div>
-      {data.label && (
-        <div className="font-mono text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-          {data.label}
-        </div>
-      )}
+
+      <div className="mb-2 flex items-center gap-2">
+        <NodeSelect
+          label="label"
+          value={label}
+          options={LABEL_OPTIONS}
+          onChange={(v) => updateNodeData(id, 'referenceImage', { label: v as ReferenceLabel })}
+        />
+        {label !== 'other' && (
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+            style={{ background: 'var(--accent)', color: '#fff' }}
+          >
+            {label}
+          </span>
+        )}
+      </div>
+
       {data.imageDataUrl ? (
-        <div className="mt-2">
+        <div>
           <img src={data.imageDataUrl} alt="Reference" className="w-full rounded-md" />
           <button
             className="nodrag mt-1 text-[11px] transition-colors hover:opacity-80"
@@ -81,7 +101,7 @@ export function ReferenceImageNode({ id, data }: ReferenceImageNodeProps) {
         </div>
       ) : (
         <button
-          className="nodrag mt-2 w-full rounded-md border py-3 text-xs transition-colors"
+          className="nodrag w-full rounded-md border py-3 text-xs transition-colors"
           style={{
             background: 'var(--bg-surface-hover)',
             borderColor: 'var(--border-subtle)',
