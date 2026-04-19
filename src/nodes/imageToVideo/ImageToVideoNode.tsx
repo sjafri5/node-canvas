@@ -10,8 +10,8 @@ import { NodeSelect } from '../NodeSelect';
 import { SegmentedControl } from '../SegmentedControl';
 
 const MODEL_OPTIONS = [
-  { value: 'gen-3-turbo', label: 'gen-3 turbo' },
   { value: 'veo-3-fast', label: 'veo3/fast' },
+  { value: 'gen-3-turbo', label: 'gen-3 turbo' },
 ];
 
 const DURATION_BY_MODEL: Record<string, { value: string; label: string }[]> = {
