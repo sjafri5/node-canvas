@@ -6,7 +6,7 @@ import type { Character, ViewId } from '../characters/types';
 import { VIEW_IDS } from '../characters/types';
 import type { MiniDrama, TonalPreset } from '../miniDramas/types';
 import { generateArc } from '../miniDramas/generateArc';
-import { draftEpisode as draftEpisodeHelper } from '../miniDramas/draftEpisode';
+import { draftEpisode as draftEpisodeHelper, draftAlternative } from '../miniDramas/draftEpisode';
 import { buildArcSystemPrompt, buildEpisodeDraftPrompt } from '../miniDramas/systemPrompts';
 import { buildAvailableLockedViews } from '../miniDramas/referenceSetup';
 import { TONAL_PRESETS } from '../miniDramas/tonalPresets';
@@ -66,7 +66,10 @@ interface AppStore {
   deleteMiniDrama: (id: string) => void;
   generateArc: (dramaId: string) => Promise<void>;
   draftEpisode: (dramaId: string, episodeNumber: number) => Promise<void>;
-  regenerateEpisode: (dramaId: string, episodeNumber: number) => Promise<void>;
+  regenerateActiveAlternative: (dramaId: string, episodeNumber: number) => Promise<void>;
+  generateAlternatives: (dramaId: string, episodeNumber: number) => Promise<void>;
+  setActiveAlternative: (dramaId: string, episodeNumber: number, alternativeId: string) => void;
+  deleteAlternative: (dramaId: string, episodeNumber: number, alternativeId: string) => void;
 }
 
 function createDefaultNode(type: NodeType, position: { x: number; y: number }): WorkflowNode {
@@ -537,12 +540,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
     });
 
     try {
-      const draftedPrompt = await draftEpisodeHelper(systemPrompt);
+      const prompt = await draftEpisodeHelper(systemPrompt);
+      const altId = createId();
+      const alt = { id: altId, prompt, generatedAt: Date.now() };
       const freshDrama = get().miniDramas[dramaId];
       if (!freshDrama) return;
       const finalEpisodes = freshDrama.episodes.map((e) =>
         e.episodeNumber === episodeNumber
-          ? { ...e, status: 'drafted' as const, draftedPrompt, draftedAt: Date.now(), error: undefined }
+          ? { ...e, status: 'drafted' as const, alternatives: [alt], activeAlternativeId: altId, draftedAt: Date.now(), error: undefined }
           : e,
       );
       get().updateMiniDrama(dramaId, { episodes: finalEpisodes });
@@ -559,8 +564,149 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
   },
 
-  regenerateEpisode: async (dramaId, episodeNumber) => {
-    await get().draftEpisode(dramaId, episodeNumber);
+  regenerateActiveAlternative: async (dramaId, episodeNumber) => {
+    const { miniDramas, characters } = get();
+    const drama = miniDramas[dramaId];
+    if (!drama) return;
+    const character = characters[drama.characterId];
+    if (!character) return;
+    const episode = drama.episodes.find((e) => e.episodeNumber === episodeNumber);
+    if (!episode?.activeAlternativeId) return;
+
+    const activeId = episode.activeAlternativeId;
+
+    // Mark as drafting
+    const updatedEps = drama.episodes.map((e) =>
+      e.episodeNumber === episodeNumber ? { ...e, status: 'drafting' as const } : e,
+    );
+    get().updateMiniDrama(dramaId, { episodes: updatedEps });
+
+    const tonalLabel = TONAL_PRESETS[drama.tonalPreset]?.label ?? drama.tonalPreset;
+    const priorEpisodes = drama.episodes
+      .filter((e) => e.episodeNumber < episodeNumber)
+      .map((e) => `Episode ${String(e.episodeNumber)} — "${e.title}": ${e.summary}`)
+      .join('\n');
+
+    const systemPrompt = buildEpisodeDraftPrompt({
+      characterName: character.name,
+      availableLockedViews: buildAvailableLockedViews(character),
+      premise: drama.premise,
+      tonalLabel,
+      priorEpisodes: priorEpisodes || 'None (this is the first episode)',
+      thisEpisodeNumber: episode.episodeNumber,
+      thisEpisodeTitle: episode.title,
+      thisEpisodeSummary: episode.summary,
+      visualStyleBlock: drama.visualStyleBlock,
+    });
+
+    try {
+      const prompt = await draftEpisodeHelper(systemPrompt);
+      const freshDrama = get().miniDramas[dramaId];
+      if (!freshDrama) return;
+      const finalEps = freshDrama.episodes.map((e) => {
+        if (e.episodeNumber !== episodeNumber) return e;
+        const updatedAlts = e.alternatives.map((a) =>
+          a.id === activeId ? { ...a, prompt, generatedAt: Date.now() } : a,
+        );
+        return { ...e, status: 'drafted' as const, alternatives: updatedAlts, error: undefined };
+      });
+      get().updateMiniDrama(dramaId, { episodes: finalEps });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const freshDrama = get().miniDramas[dramaId];
+      if (!freshDrama) return;
+      const errorEps = freshDrama.episodes.map((e) =>
+        e.episodeNumber === episodeNumber ? { ...e, status: 'error' as const, error: message } : e,
+      );
+      get().updateMiniDrama(dramaId, { episodes: errorEps });
+    }
+  },
+
+  generateAlternatives: async (dramaId, episodeNumber) => {
+    const { miniDramas, characters } = get();
+    const drama = miniDramas[dramaId];
+    if (!drama) return;
+    const character = characters[drama.characterId];
+    if (!character) return;
+    const episode = drama.episodes.find((e) => e.episodeNumber === episodeNumber);
+    if (!episode) return;
+
+    // Mark as generating
+    const updatedEps = drama.episodes.map((e) =>
+      e.episodeNumber === episodeNumber ? { ...e, status: 'generatingAlternatives' as const } : e,
+    );
+    get().updateMiniDrama(dramaId, { episodes: updatedEps });
+
+    const tonalLabel = TONAL_PRESETS[drama.tonalPreset]?.label ?? drama.tonalPreset;
+    const priorEpisodes = drama.episodes
+      .filter((e) => e.episodeNumber < episodeNumber)
+      .map((e) => `Episode ${String(e.episodeNumber)} — "${e.title}": ${e.summary}`)
+      .join('\n');
+
+    const systemPrompt = buildEpisodeDraftPrompt({
+      characterName: character.name,
+      availableLockedViews: buildAvailableLockedViews(character),
+      premise: drama.premise,
+      tonalLabel,
+      priorEpisodes: priorEpisodes || 'None (this is the first episode)',
+      thisEpisodeNumber: episode.episodeNumber,
+      thisEpisodeTitle: episode.title,
+      thisEpisodeSummary: episode.summary,
+      visualStyleBlock: drama.visualStyleBlock,
+    });
+
+    // Fire 3 parallel calls with variation instructions
+    await Promise.all(
+      [0, 1, 2].map(async (variationIndex) => {
+        try {
+          const prompt = await draftAlternative(systemPrompt, variationIndex);
+          const altId = createId();
+          const freshDrama = get().miniDramas[dramaId];
+          if (!freshDrama) return;
+          const freshEps = freshDrama.episodes.map((e) => {
+            if (e.episodeNumber !== episodeNumber) return e;
+            return { ...e, alternatives: [...e.alternatives, { id: altId, prompt, generatedAt: Date.now() }] };
+          });
+          get().updateMiniDrama(dramaId, { episodes: freshEps });
+        } catch {
+          // Individual failures don't block others — just skip
+        }
+      }),
+    );
+
+    // Mark as drafted when done
+    const freshDrama = get().miniDramas[dramaId];
+    if (!freshDrama) return;
+    const doneEps = freshDrama.episodes.map((e) =>
+      e.episodeNumber === episodeNumber ? { ...e, status: 'drafted' as const } : e,
+    );
+    get().updateMiniDrama(dramaId, { episodes: doneEps });
+  },
+
+  setActiveAlternative: (dramaId, episodeNumber, alternativeId) => {
+    const drama = get().miniDramas[dramaId];
+    if (!drama) return;
+    const updatedEps = drama.episodes.map((e) =>
+      e.episodeNumber === episodeNumber ? { ...e, activeAlternativeId: alternativeId } : e,
+    );
+    get().updateMiniDrama(dramaId, { episodes: updatedEps });
+  },
+
+  deleteAlternative: (dramaId, episodeNumber, alternativeId) => {
+    const drama = get().miniDramas[dramaId];
+    if (!drama) return;
+    const updatedEps = drama.episodes.map((e) => {
+      if (e.episodeNumber !== episodeNumber) return e;
+      const filtered = e.alternatives.filter((a) => a.id !== alternativeId);
+      if (filtered.length === 0) {
+        return { ...e, alternatives: [], activeAlternativeId: undefined, status: 'undrafted' as const };
+      }
+      const newActive = e.activeAlternativeId === alternativeId
+        ? filtered[0]!.id
+        : e.activeAlternativeId;
+      return { ...e, alternatives: filtered, activeAlternativeId: newActive };
+    });
+    get().updateMiniDrama(dramaId, { episodes: updatedEps });
   },
 }));
 
