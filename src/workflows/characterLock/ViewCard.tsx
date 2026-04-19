@@ -62,7 +62,7 @@ export function ViewCard({ view, onLock, onRegenerate }: ViewCardProps) {
         )}
       </div>
 
-      <div className="flex gap-1.5 px-3 py-2">
+      <div className="flex gap-1.5 overflow-hidden px-3 py-2">
         {!isError && (
           <button
             className="flex-1 rounded px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-30"
@@ -86,7 +86,7 @@ export function ViewCard({ view, onLock, onRegenerate }: ViewCardProps) {
           disabled={isPending}
           onClick={onRegenerate}
         >
-          {isError ? 'Retry' : 'Regenerate'}
+          {isError ? 'Retry' : 'Regen'}
         </button>
       </div>
 
