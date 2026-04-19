@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+const PROMPT_ENHANCE_SYSTEM = `You are a prompt engineer for an image generation model. Take the user's rough prompt and rewrite it as a detailed, vivid, single-paragraph image prompt. Include style, composition, lighting, and mood. Output only the rewritten prompt — no preamble, no quotes, no explanation.`;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -12,9 +14,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { prompt } = req.body as { prompt?: string };
-  if (!prompt || typeof prompt !== 'string') {
-    res.status(400).json({ error: 'Missing or invalid prompt' });
+  const { prompt, systemPrompt, userMessage, maxTokens } = req.body as {
+    prompt?: string;
+    systemPrompt?: string;
+    userMessage?: string;
+    maxTokens?: number;
+  };
+
+  // Determine message shape: custom system+user or legacy prompt-enhance
+  let messages: { role: string; content: string }[];
+
+  if (systemPrompt && userMessage) {
+    messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ];
+  } else if (prompt && typeof prompt === 'string') {
+    messages = [
+      { role: 'system', content: PROMPT_ENHANCE_SYSTEM },
+      { role: 'user', content: prompt },
+    ];
+  } else {
+    res.status(400).json({ error: 'Missing prompt or systemPrompt+userMessage' });
     return;
   }
 
@@ -27,16 +48,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a prompt engineer for an image generation model. Take the user\'s rough prompt and rewrite it as a detailed, vivid, single-paragraph image prompt. Include style, composition, lighting, and mood. Output only the rewritten prompt — no preamble, no quotes, no explanation.',
-          },
-          { role: 'user', content: prompt },
-        ],
+        messages,
         temperature: 0.7,
-        max_tokens: 300,
+        max_tokens: maxTokens ?? 300,
       }),
     });
 
