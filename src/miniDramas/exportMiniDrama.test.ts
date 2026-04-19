@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { exportMiniDramaText } from './exportMiniDrama';
-import type { MiniDrama } from './types';
+import { exportMiniDramaText, getActivePrompt } from './exportMiniDrama';
+import type { MiniDrama, Episode } from './types';
 import type { Character, ViewId, CharacterView } from '../characters/types';
 import { VIEW_IDS } from '../characters/types';
 
@@ -37,47 +37,75 @@ function makeDrama(episodes: MiniDrama['episodes']): MiniDrama {
   };
 }
 
+function ep(num: number, opts: Partial<Episode> = {}): Episode {
+  return {
+    episodeNumber: num,
+    title: `Ep ${String(num)}`,
+    summary: `Summary ${String(num)}`,
+    alternatives: [],
+    status: 'undrafted',
+    ...opts,
+  };
+}
+
+describe('getActivePrompt', () => {
+  it('returns active alternative prompt', () => {
+    const episode = ep(1, {
+      status: 'drafted',
+      alternatives: [
+        { id: 'a1', prompt: 'First', generatedAt: 1000 },
+        { id: 'a2', prompt: 'Second', generatedAt: 2000 },
+      ],
+      activeAlternativeId: 'a2',
+    });
+    expect(getActivePrompt(episode)).toBe('Second');
+  });
+
+  it('falls back to first alternative if active not found', () => {
+    const episode = ep(1, {
+      status: 'drafted',
+      alternatives: [{ id: 'a1', prompt: 'First', generatedAt: 1000 }],
+      activeAlternativeId: 'missing',
+    });
+    expect(getActivePrompt(episode)).toBe('First');
+  });
+
+  it('falls back to draftedPrompt when no alternatives', () => {
+    const episode = ep(1, { status: 'drafted', draftedPrompt: 'Legacy' });
+    expect(getActivePrompt(episode)).toBe('Legacy');
+  });
+
+  it('returns undefined for undrafted', () => {
+    expect(getActivePrompt(ep(1))).toBeUndefined();
+  });
+});
+
 describe('exportMiniDramaText', () => {
-  it('includes header, reference setup, style, and drafted episodes', () => {
+  it('includes only active alternative in export', () => {
     const drama = makeDrama([
-      { episodeNumber: 1, title: 'The Arrival', summary: 'A stranger arrives.', status: 'drafted', draftedPrompt: '=== EPISODE 1 — "The Arrival" ===\nDrafted content here.' },
-      { episodeNumber: 2, title: 'The Warning', summary: 'Bad news.', status: 'undrafted' },
+      ep(1, {
+        status: 'drafted',
+        alternatives: [
+          { id: 'a1', prompt: 'ACTIVE PROMPT', generatedAt: 1000 },
+          { id: 'a2', prompt: 'INACTIVE PROMPT', generatedAt: 2000 },
+        ],
+        activeAlternativeId: 'a1',
+      }),
+      ep(2),
     ]);
 
     const text = exportMiniDramaText(drama, makeCharacter());
 
-    expect(text).toContain('MINI-DRAMA: A detective in a noir city');
-    expect(text).toContain('CHARACTER: Malik');
-    expect(text).toContain('REFERENCE SETUP');
-    expect(text).toContain('@Malik →');
-    expect(text).toContain('VISUAL STYLE');
-    expect(text).toContain('Hard side lighting, chiaroscuro.');
-    expect(text).toContain('=== EPISODE 1');
-    expect(text).toContain('[Episode 2 — The Warning — Not yet drafted]');
+    expect(text).toContain('ACTIVE PROMPT');
+    expect(text).not.toContain('INACTIVE PROMPT');
+    expect(text).toContain('[Episode 2 — Ep 2 — Not yet drafted]');
   });
 
-  it('handles all episodes undrafted', () => {
-    const drama = makeDrama([
-      { episodeNumber: 1, title: 'Ep1', summary: 'Sum1', status: 'undrafted' },
-      { episodeNumber: 2, title: 'Ep2', summary: 'Sum2', status: 'undrafted' },
-    ]);
-
+  it('handles all undrafted episodes', () => {
+    const drama = makeDrama([ep(1), ep(2)]);
     const text = exportMiniDramaText(drama, makeCharacter());
 
-    expect(text).toContain('[Episode 1 — Ep1 — Not yet drafted]');
-    expect(text).toContain('[Episode 2 — Ep2 — Not yet drafted]');
-  });
-
-  it('handles all episodes drafted', () => {
-    const drama = makeDrama([
-      { episodeNumber: 1, title: 'Ep1', summary: 'Sum1', status: 'drafted', draftedPrompt: 'DRAFT 1' },
-      { episodeNumber: 2, title: 'Ep2', summary: 'Sum2', status: 'drafted', draftedPrompt: 'DRAFT 2' },
-    ]);
-
-    const text = exportMiniDramaText(drama, makeCharacter());
-
-    expect(text).toContain('DRAFT 1');
-    expect(text).toContain('DRAFT 2');
-    expect(text).not.toContain('Not yet drafted');
+    expect(text).toContain('[Episode 1 — Ep 1 — Not yet drafted]');
+    expect(text).toContain('[Episode 2 — Ep 2 — Not yet drafted]');
   });
 });

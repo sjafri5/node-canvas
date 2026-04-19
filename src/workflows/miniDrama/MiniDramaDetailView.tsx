@@ -17,7 +17,10 @@ export function MiniDramaDetailView({ dramaId }: MiniDramaDetailViewProps) {
   const drama = useAppStore((s) => s.miniDramas[dramaId]);
   const characters = useAppStore((s) => s.characters);
   const draftEpisode = useAppStore((s) => s.draftEpisode);
-  const regenerateEpisode = useAppStore((s) => s.regenerateEpisode);
+  const regenerateActive = useAppStore((s) => s.regenerateActiveAlternative);
+  const generateAlternatives = useAppStore((s) => s.generateAlternatives);
+  const setActiveAlternative = useAppStore((s) => s.setActiveAlternative);
+  const deleteAlternative = useAppStore((s) => s.deleteAlternative);
   const updateMiniDrama = useAppStore((s) => s.updateMiniDrama);
   const generateArcAction = useAppStore((s) => s.generateArc);
   const deleteMiniDrama = useAppStore((s) => s.deleteMiniDrama);
@@ -214,7 +217,10 @@ export function MiniDramaDetailView({ dramaId }: MiniDramaDetailViewProps) {
                   key={ep.episodeNumber}
                   episode={ep}
                   onDraft={() => void draftEpisode(dramaId, ep.episodeNumber)}
-                  onRegenerate={() => void regenerateEpisode(dramaId, ep.episodeNumber)}
+                  onRegenerate={() => void regenerateActive(dramaId, ep.episodeNumber)}
+                  onGenerateAlternatives={() => void generateAlternatives(dramaId, ep.episodeNumber)}
+                  onSetActive={(altId) => setActiveAlternative(dramaId, ep.episodeNumber, altId)}
+                  onDeleteAlternative={(altId) => deleteAlternative(dramaId, ep.episodeNumber, altId)}
                 />
               ))}
             </div>
