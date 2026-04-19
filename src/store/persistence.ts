@@ -1,7 +1,8 @@
-import type { WorkflowNode, Edge, Workflow, NodeType } from '../types';
+import type { WorkflowNode, Edge, NodeType } from '../types';
+import type { Character } from '../characters/types';
 
 const STORAGE_KEY = 'node-canvas-workflow';
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 const VALID_NODE_TYPES: ReadonlySet<string> = new Set<string>([
   'textPrompt',
@@ -17,6 +18,13 @@ interface PersistedWorkflow {
   version: number;
   nodes: WorkflowNode[];
   edges: Edge[];
+  characters?: Record<string, Character>;
+}
+
+export interface LoadedState {
+  nodes: WorkflowNode[];
+  edges: Edge[];
+  characters: Record<string, Character>;
 }
 
 function isValidNodeType(type: unknown): type is NodeType {
@@ -42,7 +50,9 @@ function isValidNode(node: unknown): boolean {
 export function isValidWorkflow(data: unknown): data is PersistedWorkflow {
   if (data == null || typeof data !== 'object') return false;
   const obj = data as Record<string, unknown>;
-  if (obj.version !== CURRENT_VERSION) return false;
+
+  // Accept both v1 and v2
+  if (obj.version !== 1 && obj.version !== 2) return false;
   if (!Array.isArray(obj.nodes) || !Array.isArray(obj.edges)) return false;
 
   for (const node of obj.nodes) {
@@ -52,8 +62,8 @@ export function isValidWorkflow(data: unknown): data is PersistedWorkflow {
   return true;
 }
 
-export function loadFromStorage(): Workflow {
-  const empty: Workflow = { version: 1, nodes: [], edges: [] };
+export function loadFromStorage(): LoadedState {
+  const empty: LoadedState = { nodes: [], edges: [], characters: {} };
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -62,22 +72,31 @@ export function loadFromStorage(): Workflow {
     const parsed: unknown = JSON.parse(raw);
     if (!isValidWorkflow(parsed)) return empty;
 
-    return { version: 1, nodes: parsed.nodes, edges: parsed.edges };
+    // v1 → v2 migration: missing characters field → empty record
+    const characters = parsed.characters ?? {};
+
+    return { nodes: parsed.nodes, edges: parsed.edges, characters };
   } catch {
     return empty;
   }
 }
 
-export function saveToStorage(nodes: WorkflowNode[], edges: Edge[]): void {
-  const data: PersistedWorkflow = { version: CURRENT_VERSION, nodes, edges };
+export function saveToStorage(
+  nodes: WorkflowNode[],
+  edges: Edge[],
+  characters: Record<string, Character>,
+): void {
+  const data: PersistedWorkflow = { version: CURRENT_VERSION, nodes, edges, characters };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-export function createDebouncedSave(delayMs = 300): (nodes: WorkflowNode[], edges: Edge[]) => void {
+export function createDebouncedSave(
+  delayMs = 300,
+): (nodes: WorkflowNode[], edges: Edge[], characters: Record<string, Character>) => void {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-  return (nodes: WorkflowNode[], edges: Edge[]) => {
+  return (nodes, edges, characters) => {
     clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => saveToStorage(nodes, edges), delayMs);
+    timeoutId = setTimeout(() => saveToStorage(nodes, edges, characters), delayMs);
   };
 }

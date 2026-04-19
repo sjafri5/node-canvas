@@ -37,7 +37,7 @@ describe('workflow export/import', () => {
     const json = useAppStore.getState().exportWorkflow();
     const parsed = JSON.parse(json) as { version: number; nodes: Record<string, unknown>[] };
 
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.nodes).toHaveLength(1);
     const node = parsed.nodes[0];
     expect(node).toHaveProperty('id', 'a');
