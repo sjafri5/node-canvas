@@ -44,11 +44,26 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (node, inp
     throw new Error(`Video submission failed (${String(submitRes.status)}): ${text}`);
   }
 
-  const submitData = (await submitRes.json()) as { jobId: string; status: string; model?: string };
-  const { jobId } = submitData;
+  const submitData = (await submitRes.json()) as {
+    jobId?: string;
+    status: string;
+    model?: string;
+    videoUrl?: string;
+  };
+
+  // Synchronous models (e.g. veo-3-fast) return the result directly
+  if (submitData.status === 'completed' && submitData.videoUrl) {
+    return { video: submitData.videoUrl };
+  }
+
+  const jobId = submitData.jobId;
+  if (!jobId) {
+    throw new Error('No jobId returned from video submission');
+  }
+
   const resolvedModel = submitData.model ?? model;
 
-  // Poll for completion
+  // Poll for completion (queue-based models like gen-3-turbo)
   const deadline = Date.now() + POLL_TIMEOUT_MS;
 
   while (Date.now() < deadline) {

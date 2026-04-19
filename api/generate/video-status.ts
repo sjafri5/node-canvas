@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const MODEL_ENDPOINTS: Record<string, string> = {
-  'veo-3-fast': 'fal-ai/veo3/fast',
+const QUEUE_ENDPOINTS: Record<string, string> = {
   'gen-3-turbo': 'fal-ai/runway-gen3/turbo/image-to-video',
 };
 
@@ -23,7 +22,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const endpoint = MODEL_ENDPOINTS[model ?? 'veo-3-fast'] ?? MODEL_ENDPOINTS['veo-3-fast'];
+  const endpoint = QUEUE_ENDPOINTS[model ?? 'gen-3-turbo'];
+  if (!endpoint) {
+    res.status(400).json({ error: `Model ${model ?? 'unknown'} does not use queue polling` });
+    return;
+  }
 
   try {
     // Check job status
