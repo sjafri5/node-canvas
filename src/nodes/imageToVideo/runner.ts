@@ -24,7 +24,13 @@ export const imageToVideoRunner: NodeRunner<ImageToVideoNode> = async (node, inp
     throw new Error('imageToVideo requires an upstream image');
   }
 
-  const { model, motionPrompt, durationSeconds } = node.data;
+  const { model, motionPrompt } = node.data;
+  // Clamp to valid values per model; old localStorage data may have stale durations
+  const VEO_DURATIONS = [4, 6, 8];
+  const GEN3_DURATIONS = [5, 10];
+  const validDurations = model === 'gen-3-turbo' ? GEN3_DURATIONS : VEO_DURATIONS;
+  const raw = node.data.durationSeconds ?? validDurations[0]!;
+  const durationSeconds = validDurations.includes(raw) ? raw : validDurations[0]!;
 
   // Submit job
   const submitRes = await ctx.fetchFn('/api/generate/video', {
