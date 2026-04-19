@@ -14,10 +14,17 @@ const MODEL_OPTIONS = [
   { value: 'gen-3-turbo', label: 'gen-3 turbo' },
 ];
 
-const DURATION_OPTIONS = [
-  { value: '5', label: '5s' },
-  { value: '10', label: '10s' },
-];
+const DURATION_BY_MODEL: Record<string, { value: string; label: string }[]> = {
+  'veo-3-fast': [
+    { value: '4', label: '4s' },
+    { value: '6', label: '6s' },
+    { value: '8', label: '8s' },
+  ],
+  'gen-3-turbo': [
+    { value: '5', label: '5s' },
+    { value: '10', label: '10s' },
+  ],
+};
 
 type ImageToVideoNodeProps = NodeProps & { data: ImageToVideoNodeType['data'] };
 
@@ -44,13 +51,18 @@ export function ImageToVideoNode({ id, data }: ImageToVideoNodeProps) {
           label="model"
           value={data.model}
           options={MODEL_OPTIONS}
-          onChange={(v) => updateNodeData(id, 'imageToVideo', { model: v as ImageToVideoNodeType['data']['model'] })}
+          onChange={(v) => {
+            const newModel = v as ImageToVideoNodeType['data']['model'];
+            const durations = DURATION_BY_MODEL[newModel] ?? DURATION_BY_MODEL['veo-3-fast']!;
+            const firstDuration = Number(durations[0]!.value);
+            updateNodeData(id, 'imageToVideo', { model: newModel, durationSeconds: firstDuration });
+          }}
         />
         <SegmentedControl
           label="duration"
           value={String(data.durationSeconds)}
-          options={DURATION_OPTIONS}
-          onChange={(v) => updateNodeData(id, 'imageToVideo', { durationSeconds: Number(v) as 5 | 10 })}
+          options={DURATION_BY_MODEL[data.model] ?? DURATION_BY_MODEL['veo-3-fast']!}
+          onChange={(v) => updateNodeData(id, 'imageToVideo', { durationSeconds: Number(v) })}
         />
       </div>
 

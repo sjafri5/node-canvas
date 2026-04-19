@@ -59,7 +59,7 @@ export interface ImageToVideoNode extends BaseNode {
   type: 'imageToVideo';
   data: {
     motionPrompt?: string;
-    durationSeconds: 5 | 10;
+    durationSeconds: number;
     model: VideoModel;
   };
   output?: { video: string };

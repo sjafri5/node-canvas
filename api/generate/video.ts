@@ -74,6 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(202).json({ jobId: requestId, status: 'pending', model: modelKey });
     } else {
       // Synchronous model (veo-3-fast) — blocks until result is ready
+      // veo3 expects duration as a string like '4s', '6s', '8s'
+      const dur = durationSeconds ?? 4;
       const falRes = await fetch(`https://fal.run/${syncEndpoint!}`, {
         method: 'POST',
         headers: {
@@ -83,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: JSON.stringify({
           image_url: imageUrl,
           prompt: motionPrompt || 'gentle ambient motion',
-          duration: durationSeconds ?? 5,
+          duration: `${String(dur)}s`,
         }),
       });
 
