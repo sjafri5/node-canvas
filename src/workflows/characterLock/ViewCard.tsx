@@ -13,67 +13,74 @@ export function ViewCard({ view, onLock, onRegenerate }: ViewCardProps) {
   const isPending = status === 'pending';
   const isError = status === 'error';
   const isReady = status === 'ready';
+  const hasImage = Boolean(imageUrl);
 
   return (
     <div
-      className="flex flex-col rounded-lg border p-3"
+      className="flex flex-col overflow-hidden rounded-lg"
       style={{
         background: 'var(--bg-surface)',
-        borderColor: isLocked ? 'var(--accent)' : 'var(--border-subtle)',
-        borderWidth: isLocked ? '2px' : '1px',
+        border: isLocked ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
       }}
     >
       <div
-        className="mb-2 text-[11px] font-semibold uppercase tracking-wide"
+        className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider"
         style={{ color: 'var(--text-tertiary)' }}
       >
         {VIEW_LABELS[viewId]}
       </div>
 
-      <div className="relative mb-3 aspect-square overflow-hidden rounded-md">
+      <div className="relative aspect-square">
         {isPending && (
           <div
-            className="h-full w-full animate-pulse rounded-md"
+            className="h-full w-full animate-pulse"
             style={{ background: 'var(--bg-surface-hover)' }}
           />
         )}
-        {(isReady || isLocked) && imageUrl && (
+        {(isReady || isLocked) && hasImage && (
           <img
             src={imageUrl}
             alt={VIEW_LABELS[viewId]}
-            className="h-full w-full object-cover transition-opacity"
+            className="h-full w-full object-cover"
           />
+        )}
+        {(isReady || isLocked) && !hasImage && (
+          <div
+            className="flex h-full w-full items-center justify-center text-[11px]"
+            style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-tertiary)' }}
+          >
+            No image — regenerate
+          </div>
         )}
         {isError && (
           <div
-            className="flex h-full w-full items-center justify-center rounded-md text-xs"
-            style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--status-error)' }}
+            className="flex h-full w-full items-center justify-center text-[11px]"
+            style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'var(--status-error)' }}
           >
-            Generation failed
+            Failed
           </div>
         )}
       </div>
 
-      <div className="mt-auto flex gap-2">
+      <div className="flex gap-1.5 px-3 py-2">
         {!isError && (
           <button
-            className="flex-1 rounded px-2 py-1.5 text-[11px] font-medium transition-colors disabled:opacity-40"
+            className="flex-1 rounded px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-30"
             style={{
               background: isLocked ? 'transparent' : 'var(--accent)',
               color: isLocked ? 'var(--text-tertiary)' : '#fff',
-              border: isLocked ? '1px solid var(--border-subtle)' : 'none',
             }}
-            disabled={isPending || isLocked}
+            disabled={isPending || isLocked || !hasImage}
             onClick={onLock}
           >
             {isLocked ? 'Locked' : 'Lock'}
           </button>
         )}
         <button
-          className="flex-1 rounded border px-2 py-1.5 text-[11px] font-medium transition-colors disabled:opacity-40"
+          className="flex-1 rounded px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-30"
           style={{
             background: 'transparent',
-            borderColor: 'var(--border-subtle)',
+            border: '1px solid var(--border-subtle)',
             color: isError ? 'var(--accent)' : 'var(--text-secondary)',
           }}
           disabled={isPending}
@@ -85,7 +92,7 @@ export function ViewCard({ view, onLock, onRegenerate }: ViewCardProps) {
 
       {error && (
         <div
-          className="mt-1 truncate text-[10px]"
+          className="truncate px-3 pb-2 text-[10px]"
           style={{ color: 'var(--status-error)' }}
           title={error}
         >
