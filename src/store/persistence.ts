@@ -75,11 +75,30 @@ export function loadFromStorage(): LoadedState {
     const parsed: unknown = JSON.parse(raw);
     if (!isValidWorkflow(parsed)) return empty;
 
+    // Migrate episodes: draftedPrompt → alternatives array
+    const miniDramas = parsed.miniDramas ?? {};
+    for (const drama of Object.values(miniDramas)) {
+      const d = drama as unknown as Record<string, unknown>;
+      if (Array.isArray(d.episodes)) {
+        for (const ep of d.episodes as Record<string, unknown>[]) {
+          if (!Array.isArray(ep.alternatives) || ep.alternatives.length === 0) {
+            if (typeof ep.draftedPrompt === 'string' && ep.draftedPrompt) {
+              const id = Math.random().toString(36).slice(2, 8);
+              ep.alternatives = [{ id, prompt: ep.draftedPrompt, generatedAt: (ep.draftedAt as number) ?? Date.now() }];
+              ep.activeAlternativeId = id;
+            } else {
+              ep.alternatives = [];
+            }
+          }
+        }
+      }
+    }
+
     return {
       nodes: parsed.nodes,
       edges: parsed.edges,
       characters: parsed.characters ?? {},
-      miniDramas: parsed.miniDramas ?? {},
+      miniDramas,
     };
   } catch {
     return empty;

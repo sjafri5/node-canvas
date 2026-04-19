@@ -184,4 +184,44 @@ describe('persistence', () => {
       expect(view?.imageUrl).toBe(`https://fal.ai/${viewId}.png`);
     }
   });
+
+  it('migrates episodes with draftedPrompt to alternatives array', () => {
+    // Simulate a v3 save with old-style draftedPrompt episodes
+    const miniDramas = {
+      'd1': {
+        id: 'd1',
+        characterId: 'c1',
+        premise: 'test',
+        tonalPreset: 'noir',
+        visualStyleBlock: 'style',
+        episodes: [
+          { episodeNumber: 1, title: 'Ep1', summary: 'Sum1', status: 'drafted', draftedPrompt: 'LEGACY PROMPT', draftedAt: 5000 },
+          { episodeNumber: 2, title: 'Ep2', summary: 'Sum2', status: 'undrafted' },
+        ],
+        arcStatus: 'generated',
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+    };
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ version: 3, nodes: [], edges: [], characters: {}, miniDramas }),
+    );
+
+    const result = loadFromStorage();
+    const drama = result.miniDramas['d1'];
+    expect(drama).toBeDefined();
+
+    const ep1 = (drama as unknown as Record<string, unknown>).episodes as Record<string, unknown>[];
+    const first = ep1[0] as Record<string, unknown>;
+    const alts = first.alternatives as { id: string; prompt: string; generatedAt: number }[];
+    expect(alts).toHaveLength(1);
+    expect(alts[0]!.prompt).toBe('LEGACY PROMPT');
+    expect(first.activeAlternativeId).toBe(alts[0]!.id);
+
+    // Undrafted episode gets empty alternatives
+    const second = ep1[1] as Record<string, unknown>;
+    expect(second.alternatives).toEqual([]);
+  });
 });
