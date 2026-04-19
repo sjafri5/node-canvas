@@ -136,4 +136,52 @@ describe('persistence', () => {
     expect(result.characters).toEqual(characters);
     expect(result.nodes).toEqual(nodes);
   });
+
+  it('round-trips a complete character with all 8 locked views', () => {
+    const views = Object.fromEntries(
+      VIEW_IDS.map((v) => [
+        v,
+        {
+          viewId: v,
+          status: 'locked' as const,
+          imageUrl: `https://fal.ai/${v}.png`,
+          generatedAt: 2000,
+        },
+      ]),
+    ) as Record<ViewId, CharacterView>;
+    const characters: Record<string, Character> = {
+      'raza-x1y2': {
+        id: 'raza-x1y2',
+        name: 'Raza',
+        referenceImageUrl: 'data:image/jpeg;base64,ref123',
+        views,
+        isComplete: true,
+        createdAt: 1000,
+        updatedAt: 3000,
+      },
+    };
+
+    saveToStorage([], [], characters);
+    localStorage.getItem('node-canvas-workflow');
+
+    // Simulate export → clear → import by reading raw JSON
+    const exported = localStorage.getItem('node-canvas-workflow')!;
+    localStorage.clear();
+    localStorage.setItem('node-canvas-workflow', exported);
+
+    const result = loadFromStorage();
+
+    expect(result.characters['raza-x1y2']).toBeDefined();
+    const char = result.characters['raza-x1y2']!;
+    expect(char.name).toBe('Raza');
+    expect(char.isComplete).toBe(true);
+    expect(char.referenceImageUrl).toBe('data:image/jpeg;base64,ref123');
+
+    // All 8 views preserved with locked status and image URLs
+    for (const viewId of VIEW_IDS) {
+      const view = char.views[viewId];
+      expect(view?.status).toBe('locked');
+      expect(view?.imageUrl).toBe(`https://fal.ai/${viewId}.png`);
+    }
+  });
 });
