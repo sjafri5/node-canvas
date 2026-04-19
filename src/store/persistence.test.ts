@@ -35,7 +35,7 @@ describe('persistence', () => {
     const nodes = [textNode('a', 'hello'), textNode('b', 'world')];
     const edges = [edge('a', 'b')];
 
-    saveToStorage(nodes, edges, {});
+    saveToStorage(nodes, edges, {}, {});
     const result = loadFromStorage();
 
     expect(result.nodes).toEqual(nodes);
@@ -46,14 +46,14 @@ describe('persistence', () => {
   it('returns empty state when key is missing', () => {
     const result = loadFromStorage();
 
-    expect(result).toEqual({ nodes: [], edges: [], characters: {} });
+    expect(result).toEqual({ nodes: [], edges: [], characters: {}, miniDramas: {} });
   });
 
   it('returns empty state on corrupt JSON', () => {
     localStorage.setItem(STORAGE_KEY, '{not valid json!!!');
     const result = loadFromStorage();
 
-    expect(result).toEqual({ nodes: [], edges: [], characters: {} });
+    expect(result).toEqual({ nodes: [], edges: [], characters: {}, miniDramas: {} });
   });
 
   it('returns empty state on version mismatch', () => {
@@ -63,14 +63,14 @@ describe('persistence', () => {
     );
     const result = loadFromStorage();
 
-    expect(result).toEqual({ nodes: [], edges: [], characters: {} });
+    expect(result).toEqual({ nodes: [], edges: [], characters: {}, miniDramas: {} });
   });
 
   it('returns empty state when stored data has wrong shape', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, nodes: 'not an array' }));
     const result = loadFromStorage();
 
-    expect(result).toEqual({ nodes: [], edges: [], characters: {} });
+    expect(result).toEqual({ nodes: [], edges: [], characters: {}, miniDramas: {} });
   });
 
   it('returns empty state when nodes contain garbage elements', () => {
@@ -84,7 +84,7 @@ describe('persistence', () => {
     );
     const result = loadFromStorage();
 
-    expect(result).toEqual({ nodes: [], edges: [], characters: {} });
+    expect(result).toEqual({ nodes: [], edges: [], characters: {}, miniDramas: {} });
   });
 
   it('returns empty state when localStorage throws', () => {
@@ -93,7 +93,7 @@ describe('persistence', () => {
     });
 
     const result = loadFromStorage();
-    expect(result).toEqual({ nodes: [], edges: [], characters: {} });
+    expect(result).toEqual({ nodes: [], edges: [], characters: {}, miniDramas: {} });
 
     vi.restoreAllMocks();
   });
@@ -130,7 +130,7 @@ describe('persistence', () => {
       },
     };
 
-    saveToStorage(nodes, [], characters);
+    saveToStorage(nodes, [], characters, {});
     const result = loadFromStorage();
 
     expect(result.characters).toEqual(characters);
@@ -161,7 +161,7 @@ describe('persistence', () => {
       },
     };
 
-    saveToStorage([], [], characters);
+    saveToStorage([], [], characters, {});
     localStorage.getItem('node-canvas-workflow');
 
     // Simulate export → clear → import by reading raw JSON

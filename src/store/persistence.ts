@@ -1,8 +1,9 @@
 import type { WorkflowNode, Edge, NodeType } from '../types';
 import type { Character } from '../characters/types';
+import type { MiniDrama } from '../miniDramas/types';
 
 const STORAGE_KEY = 'node-canvas-workflow';
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 const VALID_NODE_TYPES: ReadonlySet<string> = new Set<string>([
   'textPrompt',
@@ -19,12 +20,14 @@ interface PersistedWorkflow {
   nodes: WorkflowNode[];
   edges: Edge[];
   characters?: Record<string, Character>;
+  miniDramas?: Record<string, MiniDrama>;
 }
 
 export interface LoadedState {
   nodes: WorkflowNode[];
   edges: Edge[];
   characters: Record<string, Character>;
+  miniDramas: Record<string, MiniDrama>;
 }
 
 function isValidNodeType(type: unknown): type is NodeType {
@@ -51,8 +54,8 @@ export function isValidWorkflow(data: unknown): data is PersistedWorkflow {
   if (data == null || typeof data !== 'object') return false;
   const obj = data as Record<string, unknown>;
 
-  // Accept both v1 and v2
-  if (obj.version !== 1 && obj.version !== 2) return false;
+  // Accept v1, v2, and v3
+  if (obj.version !== 1 && obj.version !== 2 && obj.version !== 3) return false;
   if (!Array.isArray(obj.nodes) || !Array.isArray(obj.edges)) return false;
 
   for (const node of obj.nodes) {
@@ -63,7 +66,7 @@ export function isValidWorkflow(data: unknown): data is PersistedWorkflow {
 }
 
 export function loadFromStorage(): LoadedState {
-  const empty: LoadedState = { nodes: [], edges: [], characters: {} };
+  const empty: LoadedState = { nodes: [], edges: [], characters: {}, miniDramas: {} };
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -72,10 +75,12 @@ export function loadFromStorage(): LoadedState {
     const parsed: unknown = JSON.parse(raw);
     if (!isValidWorkflow(parsed)) return empty;
 
-    // v1 → v2 migration: missing characters field → empty record
-    const characters = parsed.characters ?? {};
-
-    return { nodes: parsed.nodes, edges: parsed.edges, characters };
+    return {
+      nodes: parsed.nodes,
+      edges: parsed.edges,
+      characters: parsed.characters ?? {},
+      miniDramas: parsed.miniDramas ?? {},
+    };
   } catch {
     return empty;
   }
@@ -85,18 +90,19 @@ export function saveToStorage(
   nodes: WorkflowNode[],
   edges: Edge[],
   characters: Record<string, Character>,
+  miniDramas: Record<string, MiniDrama>,
 ): void {
-  const data: PersistedWorkflow = { version: CURRENT_VERSION, nodes, edges, characters };
+  const data: PersistedWorkflow = { version: CURRENT_VERSION, nodes, edges, characters, miniDramas };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
 export function createDebouncedSave(
   delayMs = 300,
-): (nodes: WorkflowNode[], edges: Edge[], characters: Record<string, Character>) => void {
+): (nodes: WorkflowNode[], edges: Edge[], characters: Record<string, Character>, miniDramas: Record<string, MiniDrama>) => void {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-  return (nodes, edges, characters) => {
+  return (nodes, edges, characters, miniDramas) => {
     clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => saveToStorage(nodes, edges, characters), delayMs);
+    timeoutId = setTimeout(() => saveToStorage(nodes, edges, characters, miniDramas), delayMs);
   };
 }
