@@ -53,9 +53,8 @@ function compressImage(file: File, maxSize: number, quality: number): Promise<st
 export function ReferenceImageNode({ id, data }: ReferenceImageNodeProps) {
   const status = useAppStore((s) => s.nodes.find((n) => n.id === id)?.status ?? 'idle');
   const updateNodeData = useAppStore((s) => s.updateNodeData);
-  const completeCharacters = useAppStore(
-    (s) => Object.values(s.characters).filter((c) => c.isComplete),
-  );
+  const characters = useAppStore((s) => s.characters);
+  const completeCharacters = Object.values(characters).filter((c) => c.isComplete);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [source, setSource] = useState<'upload' | 'character'>('upload');
   const [selectedCharId, setSelectedCharId] = useState('');
