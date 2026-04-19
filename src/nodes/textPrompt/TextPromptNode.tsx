@@ -5,6 +5,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { StatusBadge } from '../StatusBadge';
 import { NodeHandle } from '../NodeHandle';
 import { DeleteButton } from '../DeleteButton';
+import { EnhanceButton } from '../EnhanceButton';
 
 type TextPromptNodeProps = NodeProps & { data: TextPromptNodeType['data'] };
 
@@ -42,6 +43,10 @@ export function TextPromptNode({ id, data }: TextPromptNodeProps) {
         placeholder="Enter your prompt..."
         value={data.prompt}
         onChange={(e) => updateNodeData(id, 'textPrompt', { prompt: e.target.value })}
+      />
+      <EnhanceButton
+        text={data.prompt}
+        onEnhanced={(enhanced) => updateNodeData(id, 'textPrompt', { prompt: enhanced })}
       />
       <NodeHandle type="source" position={Position.Right} id="text" label="text" />
     </div>

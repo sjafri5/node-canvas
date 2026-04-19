@@ -3,7 +3,6 @@ import { useAppStore } from '../store/useAppStore';
 
 const NODE_ENTRIES: { type: NodeType; label: string }[] = [
   { type: 'textPrompt', label: 'Text Prompt' },
-  { type: 'promptEnhance', label: 'Prompt Enhance' },
   { type: 'imageGeneration', label: 'Image Generation' },
   { type: 'imageDisplay', label: 'Image Display' },
   { type: 'referenceImage', label: 'Reference Image' },

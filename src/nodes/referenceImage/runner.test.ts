@@ -21,7 +21,7 @@ const ctx: RunContext = {
 describe('referenceImageRunner', () => {
   it('returns the data URL as imageUrl', async () => {
     const result = await referenceImageRunner(makeNode('data:image/jpeg;base64,abc123'), {}, ctx);
-    expect(result).toEqual({ imageUrl: 'data:image/jpeg;base64,abc123' });
+    expect(result).toEqual({ image: 'data:image/jpeg;base64,abc123' });
   });
 
   it('throws when no image is uploaded', async () => {

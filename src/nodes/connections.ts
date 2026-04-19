@@ -4,9 +4,7 @@
  */
 export const VALID_CONNECTIONS: [string, string][] = [
   // Text flow
-  ['textPrompt.text', 'promptEnhance.textIn'],
   ['textPrompt.text', 'imageGeneration.prompt'],
-  ['promptEnhance.text', 'imageGeneration.prompt'],
 
   // Image generation → display
   ['imageGeneration.image', 'imageDisplay.image'],

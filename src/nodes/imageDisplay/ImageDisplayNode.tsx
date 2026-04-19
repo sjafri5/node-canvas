@@ -17,7 +17,7 @@ export function ImageDisplayNode({ id }: ImageDisplayNodeProps) {
     if (!sourceNode || !('output' in sourceNode)) return undefined;
     const output: unknown = sourceNode.output;
     if (output == null || typeof output !== 'object') return undefined;
-    const url = (output as Record<string, unknown>).imageUrl;
+    const url = (output as Record<string, unknown>).image ?? (output as Record<string, unknown>).output;
     return typeof url === 'string' ? url : undefined;
   });
 

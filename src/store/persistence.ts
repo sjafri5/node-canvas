@@ -5,7 +5,6 @@ const CURRENT_VERSION = 1;
 
 const VALID_NODE_TYPES: ReadonlySet<string> = new Set<string>([
   'textPrompt',
-  'promptEnhance',
   'imageGeneration',
   'imageDisplay',
   'referenceImage',

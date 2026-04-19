@@ -17,7 +17,7 @@ export function VideoDisplayNode({ id }: VideoDisplayNodeProps) {
     if (!sourceNode || !('output' in sourceNode)) return undefined;
     const output: unknown = sourceNode.output;
     if (output == null || typeof output !== 'object') return undefined;
-    const url = (output as Record<string, unknown>).videoUrl;
+    const url = (output as Record<string, unknown>).video;
     return typeof url === 'string' ? url : undefined;
   });
 
