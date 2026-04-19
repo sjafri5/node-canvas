@@ -4,6 +4,12 @@ import { applyNodeChanges as rfApplyNodeChanges, applyEdgeChanges as rfApplyEdge
 import type { WorkflowNode, Edge, NodeType } from '../types';
 import type { Character, ViewId } from '../characters/types';
 import { VIEW_IDS } from '../characters/types';
+import type { MiniDrama, TonalPreset } from '../miniDramas/types';
+import { generateArc } from '../miniDramas/generateArc';
+import { draftEpisode as draftEpisodeHelper } from '../miniDramas/draftEpisode';
+import { buildArcSystemPrompt, buildEpisodeDraftPrompt } from '../miniDramas/systemPrompts';
+import { buildAvailableLockedViews } from '../miniDramas/referenceSetup';
+import { TONAL_PRESETS } from '../miniDramas/tonalPresets';
 import { runWorkflow as engineRunWorkflow } from '../engine/runWorkflow';
 import type { RunnerRegistry } from '../engine/types';
 import { CycleError } from '../engine/types';
@@ -47,6 +53,20 @@ interface AppStore {
   unlockView: (characterId: string, viewId: ViewId) => void;
   generateAllViews: (characterId: string) => Promise<void>;
   regenerateView: (characterId: string, viewId: ViewId) => Promise<void>;
+
+  // mini dramas
+  miniDramas: Record<string, MiniDrama>;
+  createMiniDrama: (params: {
+    characterId: string;
+    premise: string;
+    tonalPreset: TonalPreset;
+    visualStyleBlock: string;
+  }) => string;
+  updateMiniDrama: (id: string, patch: Partial<MiniDrama>) => void;
+  deleteMiniDrama: (id: string) => void;
+  generateArc: (dramaId: string) => Promise<void>;
+  draftEpisode: (dramaId: string, episodeNumber: number) => Promise<void>;
+  regenerateEpisode: (dramaId: string, episodeNumber: number) => Promise<void>;
 }
 
 function createDefaultNode(type: NodeType, position: { x: number; y: number }): WorkflowNode {
@@ -206,14 +226,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   exportWorkflow: () => {
-    const { nodes, edges, characters } = get();
+    const { nodes, edges, characters, miniDramas } = get();
     const stripped = nodes.map((n) => ({
       id: n.id,
       type: n.type,
       position: n.position,
       data: n.data,
     }));
-    return JSON.stringify({ version: 2, nodes: stripped, edges, characters }, null, 2);
+    return JSON.stringify({ version: 3, nodes: stripped, edges, characters, miniDramas }, null, 2);
   },
 
   importWorkflow: (json: string) => {
@@ -227,8 +247,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
       error: undefined,
       output: undefined,
     })) as WorkflowNode[];
-    const imported = parsed as { characters?: Record<string, Character> };
-    set({ nodes: resetNodes, edges: parsed.edges, characters: imported.characters ?? {} });
+    const imported = parsed as { characters?: Record<string, Character>; miniDramas?: Record<string, MiniDrama> };
+    set({
+      nodes: resetNodes,
+      edges: parsed.edges,
+      characters: imported.characters ?? {},
+      miniDramas: imported.miniDramas ?? {},
+    });
   },
 
   isRunning: false,
@@ -390,7 +415,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const character = characters[characterId];
     if (!character) return;
 
-    // Unlock if locked, set to pending
     get().startViewGeneration(characterId, viewId);
 
     try {
@@ -401,9 +425,146 @@ export const useAppStore = create<AppStore>((set, get) => ({
       get().setViewError(characterId, viewId, message);
     }
   },
+
+  // ---- Mini Dramas ----
+
+  miniDramas: initial.miniDramas,
+
+  createMiniDrama: (params) => {
+    const id = createId();
+    const now = Date.now();
+    const drama: MiniDrama = {
+      id,
+      characterId: params.characterId,
+      premise: params.premise,
+      tonalPreset: params.tonalPreset,
+      visualStyleBlock: params.visualStyleBlock,
+      episodes: [],
+      arcStatus: 'pending',
+      createdAt: now,
+      updatedAt: now,
+    };
+    set((s) => ({
+      miniDramas: { ...s.miniDramas, [id]: drama },
+    }));
+    return id;
+  },
+
+  updateMiniDrama: (id, patch) => {
+    set((s) => {
+      const existing = s.miniDramas[id];
+      if (!existing) return s;
+      return {
+        miniDramas: {
+          ...s.miniDramas,
+          [id]: { ...existing, ...patch, updatedAt: Date.now() },
+        },
+      };
+    });
+  },
+
+  deleteMiniDrama: (id) => {
+    set((s) => {
+      const next = { ...s.miniDramas };
+      delete next[id];
+      return { miniDramas: next };
+    });
+  },
+
+  generateArc: async (dramaId) => {
+    const { miniDramas, characters } = get();
+    const drama = miniDramas[dramaId];
+    if (!drama) return;
+    const character = characters[drama.characterId];
+    if (!character) return;
+
+    get().updateMiniDrama(dramaId, { arcStatus: 'pending', arcError: undefined });
+
+    const tonalLabel = TONAL_PRESETS[drama.tonalPreset]?.label ?? drama.tonalPreset;
+    const systemPrompt = buildArcSystemPrompt({
+      characterName: character.name,
+      premise: drama.premise,
+      tonalLabel,
+    });
+
+    try {
+      const episodes = await generateArc(systemPrompt);
+      get().updateMiniDrama(dramaId, {
+        episodes,
+        arcStatus: 'generated',
+        arcError: undefined,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      get().updateMiniDrama(dramaId, { arcStatus: 'error', arcError: message });
+    }
+  },
+
+  draftEpisode: async (dramaId, episodeNumber) => {
+    const { miniDramas, characters } = get();
+    const drama = miniDramas[dramaId];
+    if (!drama) return;
+    const character = characters[drama.characterId];
+    if (!character) return;
+
+    const episode = drama.episodes.find((e) => e.episodeNumber === episodeNumber);
+    if (!episode) return;
+
+    // Mark as drafting
+    const updatedEpisodes = drama.episodes.map((e) =>
+      e.episodeNumber === episodeNumber
+        ? { ...e, status: 'drafting' as const, error: undefined }
+        : e,
+    );
+    get().updateMiniDrama(dramaId, { episodes: updatedEpisodes });
+
+    const tonalLabel = TONAL_PRESETS[drama.tonalPreset]?.label ?? drama.tonalPreset;
+    const priorEpisodes = drama.episodes
+      .filter((e) => e.episodeNumber < episodeNumber)
+      .map((e) => `Episode ${String(e.episodeNumber)} — "${e.title}": ${e.summary}`)
+      .join('\n');
+
+    const systemPrompt = buildEpisodeDraftPrompt({
+      characterName: character.name,
+      availableLockedViews: buildAvailableLockedViews(character),
+      premise: drama.premise,
+      tonalLabel,
+      priorEpisodes: priorEpisodes || 'None (this is the first episode)',
+      thisEpisodeNumber: episode.episodeNumber,
+      thisEpisodeTitle: episode.title,
+      thisEpisodeSummary: episode.summary,
+      visualStyleBlock: drama.visualStyleBlock,
+    });
+
+    try {
+      const draftedPrompt = await draftEpisodeHelper(systemPrompt);
+      const freshDrama = get().miniDramas[dramaId];
+      if (!freshDrama) return;
+      const finalEpisodes = freshDrama.episodes.map((e) =>
+        e.episodeNumber === episodeNumber
+          ? { ...e, status: 'drafted' as const, draftedPrompt, draftedAt: Date.now(), error: undefined }
+          : e,
+      );
+      get().updateMiniDrama(dramaId, { episodes: finalEpisodes });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const freshDrama = get().miniDramas[dramaId];
+      if (!freshDrama) return;
+      const errorEpisodes = freshDrama.episodes.map((e) =>
+        e.episodeNumber === episodeNumber
+          ? { ...e, status: 'error' as const, error: message }
+          : e,
+      );
+      get().updateMiniDrama(dramaId, { episodes: errorEpisodes });
+    }
+  },
+
+  regenerateEpisode: async (dramaId, episodeNumber) => {
+    await get().draftEpisode(dramaId, episodeNumber);
+  },
 }));
 
 // Auto-save on state changes via subscription
 useAppStore.subscribe((state) => {
-  debouncedSave(state.nodes, state.edges, state.characters);
+  debouncedSave(state.nodes, state.edges, state.characters, state.miniDramas);
 });
