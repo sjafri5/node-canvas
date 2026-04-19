@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+const MODEL_ENDPOINTS: Record<string, string> = {
+  'veo-3-fast': 'fal-ai/veo3/fast',
+  'gen-3-turbo': 'fal-ai/runway-gen3/turbo/image-to-video',
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -12,16 +17,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { jobId } = req.query as { jobId?: string };
+  const { jobId, model } = req.query as { jobId?: string; model?: string };
   if (!jobId || typeof jobId !== 'string') {
     res.status(400).json({ error: 'Missing jobId' });
     return;
   }
 
+  const endpoint = MODEL_ENDPOINTS[model ?? 'veo-3-fast'] ?? MODEL_ENDPOINTS['veo-3-fast'];
+
   try {
     // Check job status
     const statusRes = await fetch(
-      `https://queue.fal.run/fal-ai/runway-gen3/turbo/image-to-video/requests/${jobId}/status`,
+      `https://queue.fal.run/${endpoint}/requests/${jobId}/status`,
       {
         headers: { Authorization: `Key ${falKey}` },
       },
@@ -38,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (statusData.status === 'COMPLETED') {
       // Fetch the result
       const resultRes = await fetch(
-        `https://queue.fal.run/fal-ai/runway-gen3/turbo/image-to-video/requests/${jobId}`,
+        `https://queue.fal.run/${endpoint}/requests/${jobId}`,
         {
           headers: { Authorization: `Key ${falKey}` },
         },

@@ -1,5 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+const MODEL_ENDPOINTS: Record<string, string> = {
+  'flux-schnell': 'fal-ai/flux/schnell',
+  'flux-dev': 'fal-ai/flux/dev',
+  'flux-pro-1.1': 'fal-ai/flux-pro/v1.1',
+};
+
+const ASPECT_RATIO_MAP: Record<string, string | { width: number; height: number }> = {
+  '1:1': 'square_hd',
+  '16:9': 'landscape_16_9',
+  '9:16': 'portrait_9_16',
+  '4:5': { width: 832, height: 1040 },
+  '2:3': { width: 832, height: 1248 },
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -12,14 +26,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { prompt } = req.body as { prompt?: string };
+  const { prompt, model, aspectRatio } = req.body as {
+    prompt?: string;
+    model?: string;
+    aspectRatio?: string;
+  };
+
   if (!prompt || typeof prompt !== 'string') {
     res.status(400).json({ error: 'Missing or invalid prompt' });
     return;
   }
 
+  const endpoint = MODEL_ENDPOINTS[model ?? 'flux-schnell'] ?? MODEL_ENDPOINTS['flux-schnell'];
+  const imageSize = ASPECT_RATIO_MAP[aspectRatio ?? '1:1'] ?? 'square_hd';
+
   try {
-    const falRes = await fetch('https://fal.run/fal-ai/flux/schnell', {
+    const falRes = await fetch(`https://fal.run/${endpoint}`, {
       method: 'POST',
       headers: {
         Authorization: `Key ${falKey}`,
@@ -27,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify({
         prompt,
-        image_size: 'square_hd',
+        image_size: imageSize,
         num_images: 1,
       }),
     });

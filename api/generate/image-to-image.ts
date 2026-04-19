@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+const MODEL_ENDPOINTS: Record<string, string> = {
+  'flux-schnell': 'fal-ai/flux/schnell/image-to-image',
+  'flux-dev': 'fal-ai/flux/dev/image-to-image',
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -12,10 +17,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { imageUrl, prompt, strength } = req.body as {
+  const { imageUrl, prompt, strength, model } = req.body as {
     imageUrl?: string;
     prompt?: string;
     strength?: number;
+    model?: string;
   };
 
   if (!imageUrl || typeof imageUrl !== 'string') {
@@ -27,8 +33,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const endpoint = MODEL_ENDPOINTS[model ?? 'flux-dev'] ?? MODEL_ENDPOINTS['flux-dev'];
+
   try {
-    const falRes = await fetch('https://fal.run/fal-ai/flux/dev/image-to-image', {
+    const falRes = await fetch(`https://fal.run/${endpoint}`, {
       method: 'POST',
       headers: {
         Authorization: `Key ${falKey}`,

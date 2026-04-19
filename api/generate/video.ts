@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+const MODEL_ENDPOINTS: Record<string, string> = {
+  'veo-3-fast': 'fal-ai/veo3/fast',
+  'gen-3-turbo': 'fal-ai/runway-gen3/turbo/image-to-video',
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -12,10 +17,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { imageUrl, motionPrompt, durationSeconds } = req.body as {
+  const { imageUrl, motionPrompt, durationSeconds, model } = req.body as {
     imageUrl?: string;
     motionPrompt?: string;
     durationSeconds?: number;
+    model?: string;
   };
 
   if (!imageUrl || typeof imageUrl !== 'string') {
@@ -23,9 +29,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const modelKey = model ?? 'veo-3-fast';
+  const endpoint = MODEL_ENDPOINTS[modelKey] ?? MODEL_ENDPOINTS['veo-3-fast'];
+
   try {
-    // Submit the job to fal.ai queue (non-blocking)
-    const falRes = await fetch('https://queue.fal.run/fal-ai/runway-gen3/turbo/image-to-video', {
+    const falRes = await fetch(`https://queue.fal.run/${endpoint}`, {
       method: 'POST',
       headers: {
         Authorization: `Key ${falKey}`,
@@ -52,7 +60,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    res.status(202).json({ jobId: requestId, status: 'pending' });
+    // Return model alongside jobId so the status endpoint knows which model to poll
+    res.status(202).json({ jobId: requestId, status: 'pending', model: modelKey });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: message });
