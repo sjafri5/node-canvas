@@ -55,7 +55,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const modelKey = model ?? 'seedance-2.0';
+  const DEFAULT_MODEL = 'seedance-2.0';
+  const rawKey = model ?? DEFAULT_MODEL;
+  const modelKey = (QUEUE_MODELS[rawKey] || SYNC_MODELS[rawKey]) ? rawKey : DEFAULT_MODEL;
   const queueEndpoint = QUEUE_MODELS[modelKey];
   const syncEndpoint = SYNC_MODELS[modelKey];
 

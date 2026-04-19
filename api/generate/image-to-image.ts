@@ -50,8 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const modelKey = model ?? 'nano-banana-pro-edit';
-  const endpoint = ENDPOINTS[modelKey] ?? ENDPOINTS['nano-banana-pro-edit'];
+  const DEFAULT_MODEL = 'nano-banana-pro-edit';
+  const modelKey = ENDPOINTS[model ?? ''] ? (model ?? DEFAULT_MODEL) : DEFAULT_MODEL;
+  const endpoint = ENDPOINTS[modelKey]!;
 
   try {
     const falRes = await fetch(`https://fal.run/${endpoint}`, {
