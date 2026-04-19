@@ -10,8 +10,8 @@ import { NodeSelect } from '../NodeSelect';
 import { SegmentedControl } from '../SegmentedControl';
 
 const MODEL_OPTIONS = [
-  { value: 'veo-3-fast', label: 'veo3/fast' },
   { value: 'gen-3-turbo', label: 'gen-3 turbo' },
+  { value: 'veo-3-fast', label: 'veo3/fast' },
 ];
 
 const DURATION_BY_MODEL: Record<string, { value: string; label: string }[]> = {
@@ -66,6 +66,9 @@ export function ImageToVideoNode({ id, data }: ImageToVideoNodeProps) {
         />
       </div>
 
+      <div className="mb-0.5 font-mono text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+        Camera & motion
+      </div>
       <textarea
         className="nodrag w-full resize-none rounded border p-2 text-sm transition-colors focus:outline-none"
         style={{
@@ -80,10 +83,13 @@ export function ImageToVideoNode({ id, data }: ImageToVideoNodeProps) {
           e.currentTarget.style.borderColor = 'var(--border-subtle)';
         }}
         rows={2}
-        placeholder="Motion prompt (optional)..."
+        placeholder="subtle movement, slight zoom, ambient breathing"
         value={data.motionPrompt ?? ''}
         onChange={(e) => updateNodeData(id, 'imageToVideo', { motionPrompt: e.target.value })}
       />
+      <div className="mt-0.5 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+        Describe how the image should animate — camera movement, subtle motion. Don't describe the scene.
+      </div>
       <EnhanceButton
         text={data.motionPrompt ?? ''}
         onEnhanced={(enhanced) => updateNodeData(id, 'imageToVideo', { motionPrompt: enhanced })}

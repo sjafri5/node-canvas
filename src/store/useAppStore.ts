@@ -53,10 +53,10 @@ function createDefaultNode(type: NodeType, position: { x: number; y: number }): 
       return {
         ...base,
         type,
-        data: { prompt: '', strength: 0.7, model: 'flux-dev', variationCount: 1 },
+        data: { prompt: '', strength: 0.25, model: 'flux-dev', variationCount: 1 },
       };
     case 'imageToVideo':
-      return { ...base, type, data: { model: 'veo-3-fast', durationSeconds: 4 } };
+      return { ...base, type, data: { model: 'gen-3-turbo', durationSeconds: 5 } };
     case 'videoDisplay':
       return { ...base, type, data: {} as Record<string, never> };
   }
