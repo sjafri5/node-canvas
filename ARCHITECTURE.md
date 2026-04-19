@@ -40,11 +40,21 @@ The alternative was adding a phantom `output?: { imageUrl: string }` to `ImageDi
 
 ## Persistence and version field
 
-`src/store/persistence.ts` subscribes to the store and writes `{ version: 1, nodes, edges }` to localStorage, debounced at 300ms. On init, `loadFromStorage()` validates the version and shape before hydrating. Wrong version, corrupt JSON, missing key, `localStorage` throwing — all fall back to an empty canvas. The version field exists because schema migration is the first thing that breaks when you iterate on a product like this. I didn't want to discover that mid-migration.
+`src/store/persistence.ts` subscribes to the store and writes `{ version: 2, nodes, edges, characters }` to localStorage, debounced at 300ms. v1 saves (pre-Character Lock) load with an empty characters record -- the migration path is a single `?? {}`. On init, `loadFromStorage()` validates the version and shape before hydrating. Wrong version, corrupt JSON, missing key, `localStorage` throwing — all fall back to an empty canvas. The version field exists because schema migration is the first thing that breaks when you iterate on a product like this. I didn't want to discover that mid-migration.
 
 ## API keys and the proxy
 
 API keys live exclusively in serverless functions. `api/generate/image.ts` reads `FAL_KEY`; `api/generate/text.ts` reads `OPENAI_API_KEY`. Client-side code calls these through `ctx.fetchFn` — the runners in `src/nodes/imageGeneration/runner.ts` and `src/nodes/promptEnhance/runner.ts` have no idea which provider they're talking to. They just call a URL and parse the response.
+
+## Templates layer -- composed experiences on top of the engine
+
+Templates are routed experiences that reuse existing infrastructure without modifying it. They live in `src/workflows/` and have their own view components, store slices, and domain logic -- but no new node types, no engine changes, no new runners.
+
+**Character Lock** is the first template. It generates 8 canonical views of a character (front, 3/4, side, low angle, close-up, full body, environment) using the existing img2img proxy with `nano-banana-pro-edit` and per-view prompts tuned for identity preservation. Each view is a single independent fetch -- not a DAG subgraph -- because 8 parallel fetches with no inter-dependencies don't need a graph. The store dispatches these directly via `src/characters/generateView.ts`.
+
+The bridge between templates and the canvas is the Reference Image node. It was extended with a "From character" source mode: select a completed character, pick a locked view, and the node populates its `imageDataUrl` from that view. The runner doesn't change -- it still reads `imageDataUrl` as before. Templates produce named assets; the canvas consumes them through an existing node type.
+
+**Adding Character Lock required zero changes to `src/engine/`.** The typed registry pattern designed to make "adding experiences additive" proved out. The characters slice was added to the store alongside the existing nodes/edges slice. Persistence was extended from v1 to v2 with a clean migration path. Routing was hand-rolled in ~50 lines. No new dependencies.
 
 ## Where I'd go next
 
@@ -55,6 +65,11 @@ API keys live exclusively in serverless functions. `api/generate/image.ts` reads
 
 ## Known rough edges
 
+- **3-character soft cap.** UX cap for cognitive reasons (picker noise in the "From character" dropdown), not storage. The warning fires at 3 characters; easily raised later.
+- **Character name can't be edited post-creation.** The character ID is slugified from the name at create time. Rename would require ID migration across the store and localStorage. Out of scope.
+- **No mid-flow reference image swap.** Changing the character source on a Reference Image node doesn't invalidate downstream nodes. The user must click Run again. Acceptable for MVP.
+- **Model key hyphenation convention.** Internal model keys use hyphens (`nano-banana-pro-edit`), not slashes. Display labels use slashes (`nano-banana-pro/edit`). This is deliberate -- slashes in keys cause routing issues in URL parameters and JSON paths.
+- **Queue-based video models (seedance-2.0, kling-v3-pro) have unreliable result fetch on fal.ai.** The queue status endpoint works but the response_url returns 404. Default video model is veo-3.1-fast (synchronous). Queue models are available but may fail.
 - **No run cancellation wired to UI.** `AbortSignal` is plumbed through `RunContext` and the image runner forwards it to `fetch`, but there's no Cancel button. Adding one is a matter of storing the `AbortController` in the store and calling `.abort()`.
 - **ImageDisplay picks the first upstream connection.** `useNodeConnections` returns all connections on the `image` handle, but the component reads `connections[0]?.source`. Fine for the current one-to-one wiring, but would need a clearer contract if multiple sources were allowed.
 - **No rate limiting on the proxy.** The serverless function at `api/generate/image.ts` forwards every request to fal.ai. A token bucket per IP would be the first thing to add before any public deployment.
