@@ -1,10 +1,19 @@
-import type { MiniDrama } from './types';
+import type { MiniDrama, Episode } from './types';
 import type { Character } from '../characters/types';
 import { buildReferenceSetupBlock } from './referenceSetup';
 
 /**
+ * Get the active alternative's prompt for an episode.
+ */
+export function getActivePrompt(episode: Episode): string | undefined {
+  if (episode.alternatives.length === 0) return episode.draftedPrompt;
+  const active = episode.alternatives.find((a) => a.id === episode.activeAlternativeId);
+  return active?.prompt ?? episode.alternatives[0]?.prompt;
+}
+
+/**
  * Bundle a mini-drama into a plain text file for export.
- * Includes reference setup, visual style, and all episodes.
+ * Uses the active alternative for each episode.
  */
 export function exportMiniDramaText(drama: MiniDrama, character: Character): string {
   const lines: string[] = [];
@@ -13,22 +22,20 @@ export function exportMiniDramaText(drama: MiniDrama, character: Character): str
   lines.push(`CHARACTER: ${character.name}`);
   lines.push('');
 
-  // Reference setup block
   lines.push(buildReferenceSetupBlock(character));
   lines.push('');
 
-  // Visual style block
   lines.push('=== VISUAL STYLE ===');
   lines.push(drama.visualStyleBlock);
   lines.push('');
 
-  // Episodes
   lines.push('=== EPISODES ===');
   lines.push('');
 
   for (const episode of drama.episodes) {
-    if (episode.status === 'drafted' && episode.draftedPrompt) {
-      lines.push(episode.draftedPrompt);
+    const prompt = getActivePrompt(episode);
+    if (episode.status === 'drafted' && prompt) {
+      lines.push(prompt);
     } else {
       lines.push(`[Episode ${String(episode.episodeNumber)} — ${episode.title} — Not yet drafted]`);
     }

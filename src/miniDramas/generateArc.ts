@@ -70,6 +70,7 @@ export async function generateArc(systemPrompt: string): Promise<Episode[]> {
     episodeNumber: ep.number,
     title: ep.title,
     summary: ep.summary,
+    alternatives: [],
     status: 'undrafted',
   }));
 }

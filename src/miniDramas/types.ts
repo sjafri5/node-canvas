@@ -5,14 +5,23 @@ export type TonalPreset =
   | 'goldenWarm'
   | 'cleanCommercial';
 
+export interface EpisodeAlternative {
+  id: string;
+  prompt: string;
+  generatedAt: number;
+}
+
 export interface Episode {
   episodeNumber: number;
   title: string;
   summary: string;
-  draftedPrompt?: string;
-  status: 'undrafted' | 'drafting' | 'drafted' | 'error';
+  alternatives: EpisodeAlternative[];
+  activeAlternativeId?: string;
+  status: 'undrafted' | 'drafting' | 'drafted' | 'generatingAlternatives' | 'error';
   error?: string;
   draftedAt?: number;
+  /** @deprecated Use alternatives[activeAlternativeId].prompt instead */
+  draftedPrompt?: string;
 }
 
 export interface MiniDrama {
