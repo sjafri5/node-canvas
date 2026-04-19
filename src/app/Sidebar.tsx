@@ -19,6 +19,8 @@ export function Sidebar() {
   const completeCount = useAppStore(
     (s) => Object.values(s.characters).filter((c) => c.isComplete).length,
   );
+  const dramaCount = useAppStore((s) => Object.keys(s.miniDramas).length);
+  const hasCompleteChars = completeCount > 0;
   const route = useRoute();
   const isCanvas = route.path === '/';
 
@@ -106,6 +108,49 @@ export function Sidebar() {
           </span>
         )}
       </button>
+      <button
+        className={`rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors ${
+          !hasCompleteChars ? 'cursor-not-allowed opacity-50' : ''
+        }`}
+        style={{
+          background: route.path.startsWith('/templates/mini-drama')
+            ? 'var(--bg-surface-hover)'
+            : 'var(--bg-surface)',
+          borderColor: 'var(--border-subtle)',
+          color: route.path.startsWith('/templates/mini-drama')
+            ? 'var(--text-primary)'
+            : 'var(--text-secondary)',
+        }}
+        onMouseEnter={(e) => {
+          if (hasCompleteChars) {
+            e.currentTarget.style.background = 'var(--bg-surface-hover)';
+            e.currentTarget.style.color = 'var(--text-primary)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!route.path.startsWith('/templates/mini-drama')) {
+            e.currentTarget.style.background = 'var(--bg-surface)';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+          }
+        }}
+        disabled={!hasCompleteChars}
+        onClick={() => navigate('/templates/mini-drama')}
+      >
+        Mini-drama
+        {dramaCount > 0 && (
+          <span
+            className="ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+            style={{ background: 'var(--accent)', color: '#fff' }}
+          >
+            {dramaCount}
+          </span>
+        )}
+      </button>
+      {!hasCompleteChars && (
+        <div className="px-1 text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
+          Lock a character first.
+        </div>
+      )}
     </div>
   );
 }

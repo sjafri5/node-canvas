@@ -13,6 +13,15 @@ function parsePath(pathname: string): RouteState {
     return { path: '/templates/character-lock', params: {} };
   }
 
+  const dramaMatch = pathname.match(/^\/templates\/mini-drama\/(.+)$/);
+  if (dramaMatch) {
+    return { path: '/templates/mini-drama/:dramaId', params: { dramaId: dramaMatch[1]! } };
+  }
+
+  if (pathname === '/templates/mini-drama') {
+    return { path: '/templates/mini-drama', params: {} };
+  }
+
   return { path: '/', params: {} };
 }
 
