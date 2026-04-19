@@ -3,13 +3,19 @@ import { imageToImageRunner } from './runner';
 import type { ImageToImageNode } from '../../types';
 import type { RunContext } from '../../engine/types';
 
-function makeNode(prompt: string, strength?: number): ImageToImageNode {
+function makeNode(prompt: string, overrides?: Partial<ImageToImageNode['data']>): ImageToImageNode {
   return {
     id: 'i2i1',
     type: 'imageToImage',
     position: { x: 0, y: 0 },
     status: 'idle',
-    data: { prompt, strength },
+    data: {
+      prompt,
+      strength: 0.7,
+      model: 'flux-dev',
+      variationCount: 1,
+      ...overrides,
+    },
   };
 }
 
@@ -18,19 +24,19 @@ function makeCtx(fetchFn: RunContext['fetchFn']): RunContext {
 }
 
 describe('imageToImageRunner', () => {
-  it('sends image and prompt to API and returns imageUrl', async () => {
+  it('sends image, prompt, strength, and model to API', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ imageUrl: 'https://fal.ai/img2img-result.png' }),
     });
 
     const result = await imageToImageRunner(
-      makeNode('make it noir'),
+      makeNode('make it noir', { strength: 0.5, model: 'flux-schnell' }),
       { image: 'https://example.com/source.png' },
       makeCtx(mockFetch as unknown as typeof fetch),
     );
 
-    expect(result).toEqual({ imageUrl: 'https://fal.ai/img2img-result.png' });
+    expect(result).toEqual({ output: 'https://fal.ai/img2img-result.png' });
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/generate/image-to-image',
       expect.objectContaining({
@@ -38,10 +44,52 @@ describe('imageToImageRunner', () => {
         body: JSON.stringify({
           imageUrl: 'https://example.com/source.png',
           prompt: 'make it noir',
-          strength: 0.7,
+          strength: 0.5,
+          model: 'flux-schnell',
         }),
       }),
     );
+  });
+
+  it('generates variations in parallel when variationCount > 1', async () => {
+    let callCount = 0;
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      callCount++;
+      return {
+        ok: true,
+        json: async () => ({ imageUrl: `https://fal.ai/i2i-${String(callCount)}.png` }),
+      };
+    });
+
+    const result = await imageToImageRunner(
+      makeNode('test', { variationCount: 2 }),
+      { image: 'https://example.com/source.png' },
+      makeCtx(mockFetch as unknown as typeof fetch),
+    );
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(result.variations).toHaveLength(2);
+    expect(result.output).toBe(result.variations![0]);
+  });
+
+  it('uses selectedVariationIndex for primary output', async () => {
+    let callCount = 0;
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      callCount++;
+      return {
+        ok: true,
+        json: async () => ({ imageUrl: `https://fal.ai/i2i-${String(callCount)}.png` }),
+      };
+    });
+
+    const result = await imageToImageRunner(
+      makeNode('test', { variationCount: 4, selectedVariationIndex: 2 }),
+      { image: 'https://example.com/source.png' },
+      makeCtx(mockFetch as unknown as typeof fetch),
+    );
+
+    expect(result.variations).toHaveLength(4);
+    expect(result.output).toBe(result.variations![2]);
   });
 
   it('throws on non-2xx response', async () => {

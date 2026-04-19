@@ -24,7 +24,7 @@ function imageGenNode(id: string): WorkflowNode {
     type: 'imageGeneration',
     position: { x: 0, y: 0 },
     status: 'idle',
-    data: {} as Record<string, never>,
+    data: { model: 'flux-schnell', aspectRatio: '1:1', variationCount: 1 },
   };
 }
 
@@ -50,20 +50,17 @@ function wf(nodes: WorkflowNode[], edges: Edge[]): Workflow {
 function mockRegistry(overrides?: Partial<RunnerRegistry>): RunnerRegistry {
   return {
     textPrompt: vi.fn(async (node) => ({ text: node.data.prompt })),
-    promptEnhance: vi.fn(async (_node, inputs) => ({
-      text: `enhanced: ${String(inputs.textIn ?? '')}`,
-    })),
     imageGeneration: vi.fn(async (_node, inputs) => ({
-      imageUrl: `https://img.test/${String(inputs.prompt ?? 'unknown')}`,
+      image: `https://img.test/${String(inputs.prompt ?? 'unknown')}`,
     })),
     referenceImage: vi.fn(async (node) => ({
-      imageUrl: node.data.imageDataUrl,
+      image: node.data.imageDataUrl,
     })),
     imageToImage: vi.fn(async () => ({
-      imageUrl: 'https://img.test/img2img',
+      output: 'https://img.test/img2img',
     })),
     imageToVideo: vi.fn(async () => ({
-      videoUrl: 'https://video.test/result.mp4',
+      video: 'https://video.test/result.mp4',
     })),
     ...overrides,
   };
@@ -98,7 +95,7 @@ describe('runWorkflow', () => {
 
     // Outputs map has entries for executable nodes only
     expect(outputs.get('t1')).toEqual({ text: 'hello' });
-    expect(outputs.get('ig1')).toEqual({ imageUrl: 'https://img.test/hello' });
+    expect(outputs.get('ig1')).toEqual({ image: 'https://img.test/hello' });
     expect(outputs.has('d1')).toBe(false);
   });
 
@@ -157,7 +154,7 @@ describe('runWorkflow', () => {
     // Branch 2 ran successfully
     expect(events.find((e) => e.nodeId === 't2' && e.status === 'success')).toBeTruthy();
     expect(events.find((e) => e.nodeId === 'ig2' && e.status === 'success')).toBeTruthy();
-    expect(outputs.get('ig2')).toEqual({ imageUrl: 'https://img.test/ok' });
+    expect(outputs.get('ig2')).toEqual({ image: 'https://img.test/ok' });
   });
 
   it('emits status events in correct order: running then success/error', async () => {
